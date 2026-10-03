@@ -123,7 +123,7 @@ interface SunwaiContextType {
 
 const SunwaiContext = createContext<SunwaiContextType | null>(null);
 
-const STORAGE_KEY = 'sunwai_state_v4';
+const STORAGE_KEY = 'sunwai_state_v5';
 
 export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   const dispatchedEmailIds = useRef(new Set<string>());

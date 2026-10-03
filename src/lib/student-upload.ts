@@ -1,4 +1,5 @@
 import { CoursePrefix, StudentUploadRow, User } from '@/types';
+import { ALL_HOSTELS } from '@/lib/constants';
 
 export const DEFAULT_COURSE_PREFIXES: CoursePrefix[] = [
   { prefix: 'PGP', course_name: 'Post Graduate Programme in Management' },
@@ -119,7 +120,7 @@ export function validateStudentRow(
 export function generate2000TestStudents(existingUsers: User[]): StudentUploadRow[] {
   const firstNames = ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Sai', 'Reyansh', 'Ayaan', 'Krishna', 'Ishaan', 'Shaurya', 'Atharva', 'Advik', 'Pranav', 'Advaith', 'Aaryavart', 'Dhruv', 'Kabir', 'Rohan', 'Darsh', 'Diya', 'Saanvi', 'Ananya', 'Aadhya', 'Pari', 'Anika', 'Navya', 'Angel', 'Riya', 'Avani', 'Myra', 'Ira', 'Ahana', 'Anvi', 'Prisha', 'Riddhi', 'Vanya', 'Kavya', 'Sarah', 'Kiara'];
   const lastNames = ['Sharma', 'Verma', 'Patel', 'Reddy', 'Nair', 'Iyer', 'Gupta', 'Singh', 'Kumar', 'Mishra', 'Pandey', 'Tiwari', 'Das', 'Sen', 'Mukherjee', 'Chatterjee', 'Banerjee', 'Bose', 'Menon', 'Pillai', 'Rao', 'Bhat', 'Hegde', 'Shetty', 'Jain', 'Agarwal', 'Mehta', 'Shah', 'Modi', 'Kulkarni', 'Deshmukh', 'Joshi', 'Patil', 'Pawar', 'Chauhan', 'Yadav', 'Malhotra', 'Kapoor', 'Khanna', 'Saxena'];
-  const hostels = ['Hostel 1', 'Hostel 2', 'Hostel 3', 'Hostel 4', 'Hostel 5', 'Hostel 6', 'Hostel 7', 'Hostel 8', 'Hostel 9', 'Hostel 10', 'Hostel 11', 'Hostel 12', 'Hostel 14', 'Hostel 15', 'Hostel 16', 'Hostel 17'];
+  const hostels = ALL_HOSTELS;
 
   const programmes = [
     { prefix: 'PGP', count: 1200, batch: '42' },

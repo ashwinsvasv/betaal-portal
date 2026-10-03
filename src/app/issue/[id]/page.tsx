@@ -222,9 +222,15 @@ export default function IssueDetailPage() {
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    addComment(issue.id, commentText.trim());
-    setCommentText('');
-    setBannerMessage('Comment posted.');
+    setErrorMessage('');
+    try {
+      addComment(issue.id, commentText.trim());
+      setCommentText('');
+      setBannerMessage('Comment posted.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not post comment.';
+      setErrorMessage(msg);
+    }
   };
 
   return (
@@ -235,6 +241,20 @@ export default function IssueDetailPage() {
           ← Back to all issues
         </Link>
       </div>
+
+      {/* Red Error Banner */}
+      {errorMessage && (
+        <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3.5 rounded-[8px] flex items-center justify-between">
+          <span>{errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage('')}
+            className="text-[#b42318] font-bold text-[12px] ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Green Success Banner (Section 4) */}
       {bannerMessage && (

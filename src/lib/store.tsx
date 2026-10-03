@@ -30,6 +30,7 @@ import { determineSuggestedOwner } from '@/lib/routing';
 import { runComprehensiveDeadlineCheck, generateDailyDigests } from '@/lib/deadline-checker';
 import { createEmailItem, EmailTemplates } from '@/lib/email-service';
 import { DEFAULT_ABUSE_WORDS, checkIssueContent } from '@/lib/moderation';
+import { LoadTestResult, execute500UserLoadTest } from '@/lib/load-test';
 
 interface SunwaiContextType {
   currentUser: User;
@@ -109,6 +110,9 @@ interface SunwaiContextType {
       status: 'PASS' | 'FAIL';
     }[];
   };
+
+  // Sprint 4 Load Test
+  run500UserLoadTest: (targetIssueId?: string) => LoadTestResult;
 
   // Helper queries
   getUserRole: (userId: string) => CouncilRole | undefined;
@@ -274,6 +278,17 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     photos: string[];
   }): Issue => {
     const now = new Date();
+
+    // Sprint 4 Rate limiting check: max 5 new issues per student per hour
+    const oneHourAgo = now.getTime() - 3600 * 1000;
+    const recentIssueCount = issues.filter(
+      (iss) => iss.raised_by === currentUser.id && new Date(iss.created_at).getTime() > oneHourAgo
+    ).length;
+
+    if (recentIssueCount >= 5) {
+      throw new Error('Rate limit reached: Maximum 5 new issues per hour per student. Please wait before raising another issue.');
+    }
+
     const ackDeadline = new Date(now.getTime() + 48 * 3600 * 1000).toISOString();
     const issueId = `issue-${Date.now()}`;
 
@@ -900,13 +915,25 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
 
   // S8: Add Comment
   const addComment = (issueId: string, body: string) => {
+    const now = new Date();
+
+    // Sprint 4 Rate limiting check: max 30 comments per student per hour
+    const oneHourAgo = now.getTime() - 3600 * 1000;
+    const recentCommentCount = comments.filter(
+      (c) => c.author_id === currentUser.id && new Date(c.created_at).getTime() > oneHourAgo
+    ).length;
+
+    if (recentCommentCount >= 30) {
+      throw new Error('Rate limit reached: Maximum 30 comments per hour per student. Please wait before posting another comment.');
+    }
+
     const newComment: Comment = {
       id: `comm-${Date.now()}`,
       issue_id: issueId,
       author_id: currentUser.id,
       body,
       removed_by_admin: false,
-      created_at: new Date().toISOString(),
+      created_at: now.toISOString(),
     };
     setComments((prev) => [...prev, newComment]);
   };
@@ -1233,6 +1260,18 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return { passed, results };
   };
 
+  // Sprint 4: 500-User Simulated Load Test
+  const run500UserLoadTest = (targetIssueId?: string): LoadTestResult => {
+    const { updatedIssues, result } = execute500UserLoadTest(issues, targetIssueId);
+    setIssues(updatedIssues);
+    logAuditAction(
+      'LOAD_TEST_500_USERS',
+      `issues/${result.targetIssueId}`,
+      `Simulated 500 concurrent voters in ${result.durationMs}ms (${result.throughputVotesPerSec} votes/sec). Blocked ${result.duplicateAttemptsBlocked} duplicates. Final votes: ${result.finalVoteCount}. Priority: ${result.priorityTriggered}`
+    );
+    return result;
+  };
+
   return (
     <SunwaiContext.Provider
       value={{
@@ -1278,6 +1317,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         updateAbuseWords,
         canUserViewIssue,
         testPrivacyIsolationSuite,
+        run500UserLoadTest,
         getUserRole,
         getRoleById,
         getUserById,

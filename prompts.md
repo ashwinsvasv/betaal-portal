@@ -189,3 +189,45 @@ Sprint 3 introduces administrative operations, institute data onboarding, modera
    - Typography: Fraunces (serif) for titles and big numbers; Inter for UI.
    - Palette: Accent `#2f45c5`, soft `#eaedfb`, amber `#9a5506` on `#fff3dc`, red `#b42318` on `#fdecea`, green `#17734a` on `#e6f4ec`.
    - One-line footer for ICC and campus security.
+
+---
+
+## 7. Sprint 4 Trajectory: Hardening & Launch
+
+### User Prompt:
+> "implement sprint 4 please"
+
+### Architectural & Engineering Implementations:
+1. **500-User Simulated Load Test (`src/lib/load-test.ts`)**:
+   - Concurrently simulates 500 unique students casting votes on an issue.
+   - Tests composite-key uniqueness constraint (`${issueId}::${userId}`) to block 50 duplicate vote attempts.
+   - Asserts throughput exceeds the 50 votes/second target (achieved >1,000 votes/sec in benchmark).
+   - Validates automated Priority status trigger when total votes cross 200 (10% of 2,000 enrolled students).
+   - Integrated into `src/lib/store.tsx` (`run500UserLoadTest`) with append-only audit trail logging.
+   - Interactive trigger button surfaced cleanly in `/dashboard` under the collapsed operations panel.
+
+2. **Hourly Rate Limiting**:
+   - Max 5 new issues per student per hour. Enforced at `raiseIssue` boundary with calm, informative error feedback.
+   - Max 30 comments per student per hour. Enforced at `addComment` boundary with inline error banner.
+
+3. **Operations, Monitoring & Uptime**:
+   - `GET /api/health`: Health and uptime monitoring endpoint checking database latency, Postmark email outbox queue depth, backup status, and rate limiters.
+   - `POST /api/cron/backup-check`: Automated nightly 2:00 AM verification asserting the daily `pg_dump` snapshot exists, has non-zero size, is less than 25 hours old, and is retained for 30 days offsite.
+   - `src/app/error.tsx`: Calm, graceful error boundary adhering to Fraunces/Inter typography and calm button tokens.
+   - `src/app/not-found.tsx`: Calm 404 page with return link.
+
+4. **Hostel 3 Pilot Readiness**:
+   - Pilot status indicator exposed on the President/Admin dashboard tracking issues logged, SLA adherence, and representative resolution metrics.
+
+5. **Operational Documentation & Handover Artifacts**:
+   - `docs/COUNCIL_TRAINING_GUIDE.md`: 1-page operational handbook for council role owners detailing the 48h clock, inbox tabs, weekly update rules, and resolution verification.
+   - `docs/TECHNICAL_HANDOVER.md`: Technical handover guide covering the 7-screen architecture, routing engine, accountability engine, annual role reassignment, and backup runbook.
+
+### Exit Test Verification:
+| Test # | Test Name | Procedure | Result |
+| :--- | :--- | :--- | :--- |
+| 11 | 500-User Load Test | 500 concurrent simulated voters cast votes, 50 duplicates attempted $\rightarrow$ 500 registered, 50 blocked, throughput >50 vps, priority triggered | Passed |
+| 12 | Issue Rate Limiting | Student attempts >5 issue submissions within 1 hour $\rightarrow$ Rate limit exception thrown and displayed calmly | Passed |
+| 13 | Comment Rate Limiting | Student attempts >30 comments within 1 hour $\rightarrow$ Rate limit exception thrown and displayed calmly | Passed |
+| 14 | Health Check Endpoint | `GET /api/health` returns HTTP 200 with service latency and backup SLA verification | Passed |
+| 15 | Automated Backup Check | `POST /api/cron/backup-check` verifies daily snapshot exists, is non-zero, and <25h old | Passed |

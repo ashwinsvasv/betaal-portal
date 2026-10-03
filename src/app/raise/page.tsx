@@ -87,19 +87,24 @@ export default function RaiseIssuePage() {
       }
     }
 
-    const created = raiseIssue({
-      title: title.trim(),
-      details: details.trim(),
-      category,
-      scope,
-      hostel: currentUser.hostel,
-      visibility,
-      ownerRoleId: targetRoleId,
-      ccRoleIds: targetCc,
-      photos,
-    });
+    try {
+      const created = raiseIssue({
+        title: title.trim(),
+        details: details.trim(),
+        category,
+        scope,
+        hostel: currentUser.hostel,
+        visibility,
+        ownerRoleId: targetRoleId,
+        ccRoleIds: targetCc,
+        photos,
+      });
 
-    router.push(`/issue/${created.id}`);
+      router.push(`/issue/${created.id}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to raise issue. Please try again.';
+      setError(msg);
+    }
   };
 
   return (

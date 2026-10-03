@@ -16,6 +16,7 @@ export default function DashboardPage() {
     outbox,
     runDeadlineChecker,
     bulkImportStudents,
+    run500UserLoadTest,
   } = useSunwai();
 
   const userRole = getUserRole(currentUser.id);
@@ -323,26 +324,67 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Admin Utilities (Collapsed) */}
-      {isAdmin && (
+      {/* System Hardening & Operations (Collapsed) */}
+      {(isAdmin || isPresident) && (
         <details className="text-[13px] text-[#5b6478] pt-2">
           <summary className="cursor-pointer font-medium hover:text-[#16213e]">
-            Admin tools (bulk student enrollment)
+            System operations & launch controls (Sprint 4)
           </summary>
-          <div className="mt-3 p-4 bg-white rounded-[8px] border border-[#dde2ea] space-y-3">
-            <p>Generate and enroll 2,000 student records into the directory with roll prefix parsing.</p>
-            <button
-              type="button"
-              onClick={() => {
-                const rows = generate2000TestStudents(users);
-                const validRows = rows.filter((r) => r.isValid);
-                const res = bulkImportStudents(validRows);
-                setCronNotice(`Successfully enrolled ${res.importedCount} student records.`);
-              }}
-              className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[13px] font-medium px-3.5 py-1.5 rounded-[8px] transition-colors"
-            >
-              Generate & enroll 2,000 students
-            </button>
+          <div className="mt-3 p-5 bg-white rounded-[12px] border border-[#dde2ea] space-y-4">
+            <div>
+              <h3 className="text-[14px] font-medium text-[#16213e] mb-1">
+                500-User Concurrent Load Test (Sprint 4 Exit Test)
+              </h3>
+              <p className="text-[#5b6478] text-[13px] mb-3">
+                Simulates 500 concurrent students voting on an issue, tests duplicate rejection for 50 repeated votes, verifies &gt;50 votes/sec throughput, and checks 10% (200 votes) priority status trigger.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const res = run500UserLoadTest();
+                  setCronNotice(
+                    `Load test ${res.passed ? 'PASSED' : 'FAILED'}: Processed ${res.successfulVotes} unique votes in ${res.durationMs}ms (${res.throughputVotesPerSec} votes/sec). Blocked ${res.duplicateAttemptsBlocked} duplicate votes. Priority flag: ${res.priorityTriggered ? 'Triggered (>=200 votes)' : 'No'}.`
+                  );
+                }}
+                className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[13px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+              >
+                Run 500-user load test
+              </button>
+            </div>
+
+            <div className="border-t border-[#dde2ea] pt-3">
+              <h3 className="text-[14px] font-medium text-[#16213e] mb-1">
+                Hostel 3 Pilot Status
+              </h3>
+              <p className="text-[#5b6478] text-[13px]">
+                Hostel 3 Pilot running: {issues.filter((i) => i.hostel === 'Hostel 3').length} issues logged,{' '}
+                {issues.filter((i) => i.hostel === 'Hostel 3' && i.status === 'Closed').length} closed,{' '}
+                {issues.filter((i) => i.hostel === 'Hostel 3' && i.status.startsWith('Escalated')).length} escalated. Primary owner: Hostel 3 Representative.
+              </p>
+            </div>
+
+            {isAdmin && (
+              <div className="border-t border-[#dde2ea] pt-3">
+                <h3 className="text-[14px] font-medium text-[#16213e] mb-1">
+                  Bulk Student Directory Enrollment (2,000 Students)
+                </h3>
+                <p className="text-[#5b6478] text-[13px] mb-2.5">
+                  Generate and enroll 2,000 student records into the directory with roll prefix parsing.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rows = generate2000TestStudents(users);
+                    const validRows = rows.filter((r) => r.isValid);
+                    const res = bulkImportStudents(validRows);
+                    setCronNotice(`Successfully enrolled ${res.importedCount} student records into directory.`);
+                  }}
+                  className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3.5 py-1.5 rounded-[8px] transition-colors"
+                >
+                  Generate & enroll 2,000 students
+                </button>
+              </div>
+            )}
           </div>
         </details>
       )}

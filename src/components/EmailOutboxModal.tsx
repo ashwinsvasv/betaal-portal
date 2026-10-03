@@ -62,10 +62,16 @@ export function EmailOutboxModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="flex items-center gap-1 text-xs text-slate-400">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{new Date(email.sent_at).toLocaleTimeString('en-IN')}</span>
-                    <span className="flex items-center text-emerald-600 font-medium ml-1">
-                      <CheckCircle className="w-3.5 h-3.5 mr-0.5" /> Sent
-                    </span>
+                    <span>{new Date(email.sent_at || email.created_at).toLocaleTimeString('en-IN')}</span>
+                    {email.status === 'sent' ? (
+                      <span className="flex items-center text-emerald-600 font-medium ml-1">
+                        <CheckCircle className="w-3.5 h-3.5 mr-0.5" /> Sent
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-rose-600 font-medium ml-1">
+                        Failed
+                      </span>
+                    )}
                   </div>
                 </div>
                 <h4 className="font-semibold text-sm text-slate-900 mb-1">{email.subject}</h4>

@@ -554,6 +554,7 @@ export const SEED_OUTBOX: EmailOutboxItem[] = [
     status: 'sent',
     attempts: 1,
     sent_at: hoursAgo(24),
+    created_at: hoursAgo(24),
   },
   {
     id: 'mail-2',
@@ -565,6 +566,7 @@ export const SEED_OUTBOX: EmailOutboxItem[] = [
     status: 'sent',
     attempts: 1,
     sent_at: hoursAgo(24),
+    created_at: hoursAgo(24),
   },
   {
     id: 'mail-3',
@@ -576,5 +578,18 @@ export const SEED_OUTBOX: EmailOutboxItem[] = [
     status: 'sent',
     attempts: 1,
     sent_at: hoursAgo(8),
+    created_at: hoursAgo(8),
+  },
+  {
+    id: 'mail-4',
+    recipient: 'mess.sec@iiml.ac.in',
+    template: 'ack_deadline_reminder_24h',
+    subject: '[Sunwai Urgent Reminder] 24 Hours Left to Acknowledge: Night canteen hygiene',
+    body: '24-hour reminder to acknowledge issue. If unacknowledged in 24 hours, it will escalate to Level 1.',
+    issue_id: 'issue-mess-hygiene',
+    status: 'failed',
+    attempts: 1,
+    error_message: 'SMTP Connection Gateway Timeout (simulated)',
+    created_at: hoursAgo(2),
   }
 ];

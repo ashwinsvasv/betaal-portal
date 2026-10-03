@@ -84,7 +84,10 @@ export interface Issue {
   owner_role_id: string;
   cc_role_ids?: string[];
   ack_deadline: string; // ISO date string (48h from creation or redirect)
-  next_update_due?: string; // ISO date string (7 days from in_progress)
+  next_update_due?: string; // ISO date string (7 days from in_progress or last update)
+  priority_response_deadline?: string; // ISO date string (7 days from crossing 10% votes)
+  escalated_at?: string; // ISO date string when moved to Escalated L1
+  last_reminded_at?: string; // ISO date string when 24h reminder sent
   vote_count: number;
   redirect_count: number;
   is_priority: boolean;
@@ -131,10 +134,12 @@ export interface EmailOutboxItem {
   template: string;
   subject: string;
   body: string;
-  issue_id: string;
+  issue_id?: string;
   status: 'sent' | 'pending' | 'failed';
   attempts: number;
-  sent_at: string;
+  error_message?: string;
+  sent_at?: string;
+  created_at: string;
 }
 
 export interface AuditLogItem {
@@ -144,4 +149,30 @@ export interface AuditLogItem {
   target: string;
   details: string;
   created_at: string;
+}
+
+export interface AreaMetrics {
+  category: IssueCategory;
+  roleName: string;
+  holderName: string;
+  totalIssues: number;
+  openCount: number;
+  overdueCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  avgDaysToClose: number;
+  criticalCount: number;
+  highCount: number;
+  reopenCount: number;
+}
+
+export interface CronRunReport {
+  runAt: string;
+  escalatedL1Count: number;
+  escalatedL2Count: number;
+  remindersSent: number;
+  priorityEscalatedCount: number;
+  updateBreachesCount: number;
+  autoClosedCount: number;
+  logs: string[];
 }

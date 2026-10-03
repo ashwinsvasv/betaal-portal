@@ -12,6 +12,8 @@ import {
   IssueScope,
   IssueVisibility,
   IssueStatus,
+  IssueSeverity,
+  CronRunReport,
 } from '@/types';
 import {
   SEED_USERS,
@@ -22,6 +24,8 @@ import {
   SEED_OUTBOX,
 } from '@/lib/seed-data';
 import { determineSuggestedOwner } from '@/lib/routing';
+import { runComprehensiveDeadlineCheck, generateDailyDigests } from '@/lib/deadline-checker';
+import { createEmailItem, EmailTemplates } from '@/lib/email-service';
 
 interface SunwaiContextType {
   currentUser: User;
@@ -32,8 +36,11 @@ interface SunwaiContextType {
   comments: Comment[];
   statusUpdates: StatusUpdate[];
   outbox: EmailOutboxItem[];
-  userVotes: Set<string>; // set of issueIds voted by currentUser
-  
+  userVotes: Set<string>;
+  lastCronReport: CronRunReport | null;
+  simulatedClockOffsetHours: number;
+  setSimulatedClockOffsetHours: (hours: number) => void;
+
   // Actions
   raiseIssue: (data: {
     title: string;
@@ -46,30 +53,33 @@ interface SunwaiContextType {
     ccRoleIds: string[];
     photos: string[];
   }) => Issue;
-  
+
   upvoteIssue: (issueId: string) => void;
   editIssue: (issueId: string, title: string, details: string) => boolean;
   deleteIssue: (issueId: string) => boolean;
   withdrawIssue: (issueId: string) => boolean;
-  
+
   // Owner actions
   acknowledgeIssue: (issueId: string, note: string) => void;
   startWork: (issueId: string, note: string) => void;
   postProgressUpdate: (issueId: string, note: string, photoUrl?: string) => void;
   completeIssue: (issueId: string, note: string, photoUrl?: string) => void;
   rejectIssue: (issueId: string, reason: string, note: string) => void;
-  redirectIssue: (issueId: string, newRoleId: string, reason: string) => void;
-  
+  redirectIssue: (issueId: string, newRoleId: string, reason: string) => { success: boolean; message: string };
+  setIssueSeverity: (issueId: string, severity: IssueSeverity) => void;
+
   // Student verification actions
   confirmResolution: (issueId: string, note?: string) => void;
   reopenIssue: (issueId: string, reason: string) => void;
-  
+
   // Comments
   addComment: (issueId: string, body: string) => void;
-  
-  // Scheduled Deadline Checker (Exit test & demo button)
-  runDeadlineChecker: () => { escalatedCount: number; closedCount: number };
-  
+
+  // Sprint 2 Deadline Engine & Cron
+  runDeadlineChecker: (offsetHours?: number) => CronRunReport;
+  triggerDailyDigest: () => number;
+  retryFailedEmails: () => number;
+
   // Helper queries
   getUserRole: (userId: string) => CouncilRole | undefined;
   getRoleById: (roleId: string) => CouncilRole | undefined;
@@ -79,18 +89,20 @@ interface SunwaiContextType {
 
 const SunwaiContext = createContext<SunwaiContextType | null>(null);
 
-const STORAGE_KEY = 'sunwai_state_v1';
+const STORAGE_KEY = 'sunwai_state_v2';
 
 export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUserState] = useState<User>(SEED_USERS[11]); // Default to Rahul Sharma (PGP student)
   const [users] = useState<User[]>(SEED_USERS);
   const [roles] = useState<CouncilRole[]>(SEED_ROLES);
-  
+
   const [issues, setIssues] = useState<Issue[]>(SEED_ISSUES);
   const [comments, setComments] = useState<Comment[]>(SEED_COMMENTS);
   const [statusUpdates, setStatusUpdates] = useState<StatusUpdate[]>(SEED_STATUS_UPDATES);
   const [outbox, setOutbox] = useState<EmailOutboxItem[]>(SEED_OUTBOX);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set(['issue-hot-water']));
+  const [lastCronReport, setLastCronReport] = useState<CronRunReport | null>(null);
+  const [simulatedClockOffsetHours, setSimulatedClockOffsetHours] = useState<number>(0);
 
   // Hydrate from localStorage on client load
   useEffect(() => {
@@ -107,13 +119,17 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
           if (user) setCurrentUserState(user);
         }
         if (parsed.userVotes) setUserVotes(new Set(parsed.userVotes));
+        if (parsed.lastCronReport) setLastCronReport(parsed.lastCronReport);
+        if (typeof parsed.simulatedClockOffsetHours === 'number') {
+          setSimulatedClockOffsetHours(parsed.simulatedClockOffsetHours);
+        }
       }
     } catch (e) {
       console.error('Error loading stored state:', e);
     }
   }, []);
 
-  // Save to localStorage whenever critical state changes
+  // Save to localStorage whenever state updates
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -125,12 +141,14 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
           outbox,
           currentUserId: currentUser.id,
           userVotes: Array.from(userVotes),
+          lastCronReport,
+          simulatedClockOffsetHours,
         })
       );
     } catch (e) {
       console.error('Error saving state:', e);
     }
-  }, [issues, comments, statusUpdates, outbox, currentUser, userVotes]);
+  }, [issues, comments, statusUpdates, outbox, currentUser, userVotes, lastCronReport, simulatedClockOffsetHours]);
 
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
@@ -154,23 +172,21 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     setComments(SEED_COMMENTS);
     setStatusUpdates(SEED_STATUS_UPDATES);
     setOutbox(SEED_OUTBOX);
-    setCurrentUserState(SEED_USERS[11]); // Rahul Sharma
+    setCurrentUserState(SEED_USERS[11]);
     setUserVotes(new Set(['issue-hot-water']));
+    setLastCronReport(null);
+    setSimulatedClockOffsetHours(0);
   };
 
   // Helper to record email in outbox
-  const sendEmail = (recipient: string, template: string, subject: string, body: string, issueId: string) => {
-    const newItem: EmailOutboxItem = {
-      id: `mail-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+  const sendEmail = (recipient: string, template: string, subject: string, body: string, issueId?: string) => {
+    const newItem = createEmailItem({
       recipient,
       template,
       subject,
       body,
       issue_id: issueId,
-      status: 'sent',
-      attempts: 1,
-      sent_at: new Date().toISOString(),
-    };
+    });
     setOutbox((prev) => [newItem, ...prev]);
   };
 
@@ -204,7 +220,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       owner_role_id: data.ownerRoleId,
       cc_role_ids: data.ccRoleIds,
       ack_deadline: ackDeadline,
-      vote_count: 1, // Student auto-upvotes own issue
+      vote_count: 1,
       redirect_count: 0,
       is_priority: false,
       photos: data.photos,
@@ -212,51 +228,37 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       updated_at: now.toISOString(),
     };
 
-    // Update issues
     setIssues((prev) => [newIssue, ...prev]);
 
-    // Record user vote
     setUserVotes((prev) => {
       const next = new Set(prev);
       next.add(issueId);
       return next;
     });
 
-    // Record initial status update (append-only log)
     const initialUpdate: StatusUpdate = {
       id: `upd-${Date.now()}`,
       issue_id: issueId,
       actor_id: currentUser.id,
       from_status: 'Raised',
       to_status: 'Raised',
-      note: `Issue raised by ${currentUser.name} (${currentUser.course} ${currentUser.batch}) and assigned to ${getRoleById(data.ownerRoleId)?.name || 'Assigned Role'}. 48-hour acknowledgment clock started.`,
+      note: `Issue raised by ${currentUser.name} (${currentUser.course} ${currentUser.batch}) and assigned to ${getRoleById(data.ownerRoleId)?.name || 'Assigned Role'}. 48-hour response clock started.`,
       created_at: now.toISOString(),
     };
     setStatusUpdates((prev) => [initialUpdate, ...prev]);
 
-    // Send notifications to role inbox and CC roles
     const ownerRole = getRoleById(data.ownerRoleId);
     if (ownerRole) {
-      sendEmail(
-        ownerRole.inbox_email,
-        'issue_raised',
-        `[Sunwai] New Issue Raised: ${data.title}`,
-        `Hello,\n\nA new issue has been raised and assigned to your role (${ownerRole.name}).\n\nTitle: ${data.title}\nCategory: ${data.category}\nScope: ${data.scope}\nHostel: ${data.hostel}\n\nPlease acknowledge within 48 hours.\nDeadline: ${new Date(ackDeadline).toLocaleString('en-IN')}`,
-        issueId
-      );
+      const email = createEmailItem(EmailTemplates.issueRaised(newIssue, ownerRole, currentUser));
+      setOutbox((prev) => [email, ...prev]);
     }
 
     if (data.ccRoleIds && data.ccRoleIds.length > 0) {
       data.ccRoleIds.forEach((ccId) => {
         const ccRole = getRoleById(ccId);
         if (ccRole) {
-          sendEmail(
-            ccRole.inbox_email,
-            'issue_raised_cc',
-            `[Sunwai CC] New Issue in ${data.hostel}: ${data.title}`,
-            `You are copied on an issue raised in ${data.category} for ${data.hostel}.`,
-            issueId
-          );
+          const email = createEmailItem(EmailTemplates.issueRaisedCc(newIssue, ccRole));
+          setOutbox((prev) => [email, ...prev]);
         }
       });
     }
@@ -264,7 +266,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return newIssue;
   };
 
-  // S6: Upvote Issue (One per student, removable)
+  // S6: Upvote Issue with 7-day priority deadline
   const upvoteIssue = (issueId: string) => {
     const hasVoted = userVotes.has(issueId);
 
@@ -283,20 +285,16 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         if (iss.id === issueId) {
           const delta = hasVoted ? -1 : 1;
           const newVoteCount = Math.max(0, iss.vote_count + delta);
-          // Priority threshold: crossing 200 votes (approx 10% of enrolled students)
           const isPriority = newVoteCount >= 200;
+          let priorityDeadline = iss.priority_response_deadline;
 
+          // If freshly crossing 200 votes, set the 7-day response deadline
           if (isPriority && !iss.is_priority) {
-            // Priority triggered email
+            priorityDeadline = new Date(Date.now() + 7 * 86400 * 1000).toISOString();
             const ownerRole = getRoleById(iss.owner_role_id);
             if (ownerRole) {
-              sendEmail(
-                ownerRole.inbox_email,
-                'priority_threshold',
-                `[Sunwai Priority Alert] ${iss.title} crossed 200 votes!`,
-                `This issue has crossed the 10% campus threshold (${newVoteCount} votes). As per Student Council charter, a public response is required within 7 days.`,
-                iss.id
-              );
+              const email = createEmailItem(EmailTemplates.priorityThresholdCrossed({ ...iss, priority_response_deadline: priorityDeadline }, ownerRole));
+              setOutbox((o) => [email, ...o]);
             }
           }
 
@@ -304,6 +302,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
             ...iss,
             vote_count: newVoteCount,
             is_priority: isPriority,
+            priority_response_deadline: priorityDeadline,
             updated_at: new Date().toISOString(),
           };
         }
@@ -312,15 +311,46 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // S5: Edit issue (only before vote or acknowledgment; or withdraw)
+  // C6: Set Severity flag
+  const setIssueSeverity = (issueId: string, severity: IssueSeverity) => {
+    const target = issues.find((i) => i.id === issueId);
+    if (!target) return;
+
+    const prevSeverity = target.severity;
+    if (prevSeverity === severity) return;
+
+    const now = new Date().toISOString();
+    setIssues((prev) =>
+      prev.map((iss) => {
+        if (iss.id === issueId) {
+          return {
+            ...iss,
+            severity,
+            updated_at: now,
+          };
+        }
+        return iss;
+      })
+    );
+
+    const userRole = getUserRole(currentUser.id);
+    const update: StatusUpdate = {
+      id: `upd-${Date.now()}`,
+      issue_id: issueId,
+      actor_id: currentUser.id,
+      from_status: target.status,
+      to_status: target.status,
+      note: `Severity updated from ${prevSeverity} to ${severity} by ${userRole?.name || currentUser.name}.`,
+      created_at: now,
+    };
+    setStatusUpdates((prev) => [update, ...prev]);
+  };
+
+  // S5: Edit issue
   const editIssue = (issueId: string, title: string, details: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
     if (!target) return false;
-
-    // Can only edit if raised by current user
     if (target.raised_by !== currentUser.id) return false;
-
-    // After acknowledgment, cannot edit
     if (target.status !== 'Raised') return false;
 
     setIssues((prev) =>
@@ -351,13 +381,11 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // S5: Delete issue (only before first vote or acknowledgment)
+  // S5: Delete issue
   const deleteIssue = (issueId: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
     if (!target) return false;
-
     if (target.raised_by !== currentUser.id) return false;
-    // Nobody can delete an issue once it has votes > 1 or is acknowledged
     if (target.status !== 'Raised' || target.vote_count > 1) {
       return false;
     }
@@ -366,11 +394,10 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // S5: Withdraw issue (after votes/acknowledgment)
+  // S5: Withdraw issue
   const withdrawIssue = (issueId: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
     if (!target) return false;
-
     if (target.raised_by !== currentUser.id) return false;
 
     const now = new Date().toISOString();
@@ -433,7 +460,6 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     };
     setStatusUpdates((prev) => [update, ...prev]);
 
-    // Email student
     const student = getUserById(target.raised_by);
     if (student) {
       sendEmail(
@@ -486,7 +512,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         student.email,
         'status_in_progress',
         `[Sunwai] Work started on your issue: ${target.title}`,
-        `The owner has moved "${target.title}" to In Progress.\n\nNote: ${note}\nNext update due in 7 days.`,
+        `The owner has moved "${target.title}" to In Progress.\n\nNote: ${note}\nNext weekly update due in 7 days.`,
         issueId
       );
     }
@@ -626,18 +652,26 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // C5: Redirect Issue
-  const redirectIssue = (issueId: string, newRoleId: string, reason: string) => {
+  // C5: Redirect Issue with 2-redirect limit
+  const redirectIssue = (
+    issueId: string,
+    newRoleId: string,
+    reason: string
+  ): { success: boolean; message: string } => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target) return { success: false, message: 'Issue not found' };
 
     const nextRedirectCount = target.redirect_count + 1;
     let finalRoleId = newRoleId;
+    let autoPresidentNotice = false;
 
-    // Spec rule: after 2 redirects, next goes to President
+    // Spec Rule: After 2 redirects, the next redirect goes to the President automatically
     if (nextRedirectCount >= 3) {
       const presRole = roles.find((r) => r.name === 'President');
-      if (presRole) finalRoleId = presRole.id;
+      if (presRole) {
+        finalRoleId = presRole.id;
+        autoPresidentNotice = true;
+      }
     }
 
     const now = new Date();
@@ -661,27 +695,37 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       })
     );
 
+    const updateNote = autoPresidentNotice
+      ? `Maximum redirect limit (2) reached. Issue automatically escalated to President for final assignment (Redirect #${nextRedirectCount}). Reason: ${reason}. 48h clock restarted.`
+      : `Redirected from ${oldRole?.name || 'previous owner'} to ${newRole?.name || 'new owner'} (Redirect #${nextRedirectCount}/2). Reason: ${reason}. 48h clock restarted.`;
+
     const update: StatusUpdate = {
       id: `upd-${Date.now()}`,
       issue_id: issueId,
       actor_id: currentUser.id,
       from_status: target.status,
       to_status: 'Raised',
-      note: `Redirected from ${oldRole?.name || 'previous owner'} to ${newRole?.name || 'new owner'} (Redirect #${nextRedirectCount}). Reason: ${reason}. 48h clock restarted.`,
+      note: updateNote,
       created_at: now.toISOString(),
     };
     setStatusUpdates((prev) => [update, ...prev]);
 
-    // Notify new role
     if (newRole) {
       sendEmail(
         newRole.inbox_email,
         'issue_redirected',
-        `[Sunwai Redirect] Issue reassigned to you: ${target.title}`,
+        `[Sunwai Redirect #${nextRedirectCount}] Issue reassigned to you: ${target.title}`,
         `Issue "${target.title}" was redirected to your role by ${oldRole?.name}.\nReason: ${reason}\nNew 48h acknowledgment deadline: ${new Date(newAckDeadline).toLocaleString('en-IN')}`,
         issueId
       );
     }
+
+    return {
+      success: true,
+      message: autoPresidentNotice
+        ? 'Maximum redirect limit (2) reached. Ticket automatically escalated to President.'
+        : `Issue successfully redirected to ${newRole?.name}. 48h clock restarted.`,
+    };
   };
 
   // S9: Confirm Resolution (Student)
@@ -753,13 +797,14 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
 
     const ownerRole = getRoleById(target.owner_role_id);
     if (ownerRole) {
-      sendEmail(
-        ownerRole.inbox_email,
-        'issue_reopened',
-        `[Sunwai Reopened] Issue reopened by student: ${target.title}`,
-        `The student has reopened the issue stating:\n\n"${reason}"\n\nPlease re-inspect and update progress.`,
-        issueId
-      );
+      const email = createEmailItem({
+        recipient: ownerRole.inbox_email,
+        template: 'issue_reopened',
+        subject: `[Sunwai Reopened] Issue reopened by student: ${target.title}`,
+        body: `The student has reopened issue "${target.title}" stating:\n\n"${reason}"\n\nPlease re-inspect and update progress.`,
+        issue_id: issueId,
+      });
+      setOutbox((prev) => [email, ...prev]);
     }
   };
 
@@ -776,78 +821,56 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     setComments((prev) => [...prev, newComment]);
   };
 
-  // Scheduled Deadline Checker (Exit test demonstration)
-  const runDeadlineChecker = () => {
-    const now = new Date().getTime();
-    let escalated = 0;
-    let autoClosed = 0;
+  // Sprint 2 Comprehensive Deadline Engine
+  const runDeadlineChecker = (offsetHours: number = simulatedClockOffsetHours): CronRunReport => {
+    const result = runComprehensiveDeadlineCheck({
+      issues,
+      roles,
+      simulatedTimeOffsetHours: offsetHours,
+    });
 
-    setIssues((prev) =>
-      prev.map((iss) => {
-        // 1. Check Acknowledgment Deadlines
-        if (iss.status === 'Raised') {
-          const deadline = new Date(iss.ack_deadline).getTime();
-          if (now > deadline) {
-            escalated++;
-            // Escalate to L1 (President)
-            const update: StatusUpdate = {
-              id: `upd-${Date.now()}-${iss.id}`,
-              issue_id: iss.id,
-              actor_id: 'system',
-              from_status: 'Raised',
-              to_status: 'Escalated L1',
-              note: `Deadline checker: 48-hour acknowledgment deadline missed. Auto-escalated to President (Escalated L1).`,
-              created_at: new Date().toISOString(),
-            };
-            setStatusUpdates((u) => [update, ...u]);
+    setIssues(result.updatedIssues);
+    if (result.newStatusUpdates.length > 0) {
+      setStatusUpdates((prev) => [...result.newStatusUpdates, ...prev]);
+    }
+    if (result.newEmails.length > 0) {
+      setOutbox((prev) => [...result.newEmails, ...prev]);
+    }
 
-            sendEmail(
-              'president@iiml.ac.in',
-              'escalation_l1',
-              `[Sunwai Auto-Escalation L1] Missed Deadline: ${iss.title}`,
-              `Issue "${iss.title}" was not acknowledged within 48 hours by ${getRoleById(iss.owner_role_id)?.name}. It has escalated to your dashboard.`,
-              iss.id
-            );
+    setLastCronReport(result.report);
+    return result.report;
+  };
 
-            return {
-              ...iss,
-              status: 'Escalated L1',
-              updated_at: new Date().toISOString(),
-            };
-          }
+  // Daily 8 AM Digest Trigger
+  const triggerDailyDigest = (): number => {
+    const digests = generateDailyDigests(issues, roles);
+    if (digests.length > 0) {
+      setOutbox((prev) => [...digests, ...prev]);
+    }
+    return digests.length;
+  };
+
+  // Outbox Retry Mechanism for Failed Emails
+  const retryFailedEmails = (): number => {
+    let retriedCount = 0;
+    setOutbox((prev) =>
+      prev.map((item) => {
+        if (item.status === 'failed') {
+          retriedCount++;
+          const nextAttempts = item.attempts + 1;
+          const isSuccess = nextAttempts >= 2; // Succeed on retry
+          return {
+            ...item,
+            attempts: nextAttempts,
+            status: isSuccess ? 'sent' : 'failed',
+            sent_at: isSuccess ? new Date().toISOString() : undefined,
+            error_message: isSuccess ? undefined : 'Connection retry failed',
+          };
         }
-
-        // 2. Check 7-day auto-close for Completed issues
-        if (iss.status === 'Completed') {
-          const completedTime = new Date(iss.updated_at).getTime();
-          const sevenDaysMs = 7 * 86400 * 1000;
-          if (now - completedTime > sevenDaysMs) {
-            autoClosed++;
-            const update: StatusUpdate = {
-              id: `upd-${Date.now()}-${iss.id}`,
-              issue_id: iss.id,
-              actor_id: 'system',
-              from_status: 'Completed',
-              to_status: 'Closed',
-              note: `Deadline checker: 7 days elapsed with no student objection. Automatically closed.`,
-              created_at: new Date().toISOString(),
-            };
-            setStatusUpdates((u) => [update, ...u]);
-
-            return {
-              ...iss,
-              status: 'Closed',
-              closed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-          }
-        }
-
-        return iss;
+        return item;
       })
     );
-
-    return { escalatedCount: escalated, closedCount: autoClosed };
+    return retriedCount;
   };
 
   return (
@@ -862,6 +885,9 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         statusUpdates,
         outbox,
         userVotes,
+        lastCronReport,
+        simulatedClockOffsetHours,
+        setSimulatedClockOffsetHours,
         raiseIssue,
         upvoteIssue,
         editIssue,
@@ -873,10 +899,13 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         completeIssue,
         rejectIssue,
         redirectIssue,
+        setIssueSeverity,
         confirmResolution,
         reopenIssue,
         addComment,
         runDeadlineChecker,
+        triggerDailyDigest,
+        retryFailedEmails,
         getUserRole,
         getRoleById,
         getUserById,

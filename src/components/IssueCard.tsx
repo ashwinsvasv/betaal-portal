@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Building,
   User as UserIcon,
+  RotateCcw,
+  Zap,
 } from 'lucide-react';
 
 interface Props {
@@ -65,16 +67,27 @@ export function IssueCard({ issue }: Props) {
     }
   };
 
-  // Time remaining calculation for acknowledgment
+  // Severity styling (C6)
+  const getSeverityBadge = () => {
+    if (issue.severity === 'Critical') {
+      return 'bg-rose-600 text-white border-rose-700 font-black flex items-center gap-1';
+    }
+    if (issue.severity === 'High') {
+      return 'bg-orange-100 text-orange-800 border-orange-200 font-bold';
+    }
+    return null;
+  };
+
+  // Time remaining calculation for acknowledgment & SLAs
   const getDeadlineText = () => {
     if (issue.status === 'Raised') {
       const remainingMs = new Date(issue.ack_deadline).getTime() - new Date().getTime();
       const hours = Math.round(remainingMs / (1000 * 3600));
-      if (hours <= 0) return 'Ack overdue!';
+      if (hours <= 0) return 'Ack overdue (48h breached)';
       return `Ack due in ~${hours}h`;
     }
     if (issue.status.startsWith('Escalated')) {
-      return '48h Ack deadline missed';
+      return '48h Ack deadline breached';
     }
     if (issue.status === 'In Progress' && issue.next_update_due) {
       const remainingDays = Math.max(
@@ -83,26 +96,32 @@ export function IssueCard({ issue }: Props) {
           (new Date(issue.next_update_due).getTime() - new Date().getTime()) / (1000 * 86400)
         )
       );
-      return `Weekly update in ${remainingDays}d`;
+      return `Weekly update due in ${remainingDays}d`;
     }
     if (issue.status === 'Completed') {
-      return '7-day student review';
+      const remainingReviewDays = Math.max(
+        0,
+        Math.round(
+          (7 * 86400 * 1000 - (Date.now() - new Date(issue.updated_at).getTime())) / (1000 * 86400)
+        )
+      );
+      return `7-day review (~${remainingReviewDays}d left)`;
     }
     return null;
   };
 
   const deadlineInfo = getDeadlineText();
 
-  // Public Identity Rule (Tech spec requirement):
-  // General students see only "PGP 41 student".
-  // Assigned owner and President see full name and roll number.
+  // Public Identity Rule (Tech spec requirement)
   const canSeeFullIdentity = isOwner || isPresident || issue.raised_by === currentUser.id;
   const authorDisplay = canSeeFullIdentity
     ? `${raiser?.name || 'Student'} (${raiser?.roll_no || ''})`
     : `${raiser?.course || 'PGP'} ${raiser?.batch || 'Batch'} student`;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-5 flex gap-4">
+    <div className={`bg-white rounded-xl border transition-all p-5 flex gap-4 ${
+      issue.severity === 'Critical' ? 'border-rose-300 shadow-md ring-1 ring-rose-200' : 'border-slate-200 shadow-sm hover:shadow-md'
+    }`}>
       {/* Upvote Button Column */}
       <div className="flex flex-col items-center">
         <button
@@ -149,10 +168,18 @@ export function IssueCard({ issue }: Props) {
             {issue.status}
           </span>
 
+          {/* Severity flag (C6) */}
+          {getSeverityBadge() && (
+            <span className={`text-xs px-2.5 py-0.5 rounded-full border ${getSeverityBadge()}`}>
+              {issue.severity === 'Critical' && <AlertTriangle className="w-3 h-3" />}
+              {issue.severity} Severity
+            </span>
+          )}
+
           {/* Priority flag */}
           {issue.is_priority && (
             <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-rose-600 text-white flex items-center gap-1 shadow-sm">
-              <Flame className="w-3 h-3 fill-white" /> Priority Issue (200+ votes)
+              <Flame className="w-3 h-3 fill-white" /> Priority (200+ votes)
             </span>
           )}
 
@@ -160,6 +187,13 @@ export function IssueCard({ issue }: Props) {
           {issue.is_reopened && (
             <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-500 text-white">
               Reopened by Student
+            </span>
+          )}
+
+          {/* Redirect counter badge (C5) */}
+          {issue.redirect_count > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 font-mono font-bold">
+              Redirected ({issue.redirect_count}/2)
             </span>
           )}
 
@@ -202,7 +236,7 @@ export function IssueCard({ issue }: Props) {
           </div>
         )}
 
-        {/* Footer Details: Assigned Owner & Author & Timers */}
+        {/* Footer Details */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-y-2 text-xs text-slate-500">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Owner Role */}
@@ -212,14 +246,7 @@ export function IssueCard({ issue }: Props) {
             </div>
 
             {/* Public Identity Rule */}
-            <div
-              className="flex items-center gap-1 text-slate-500"
-              title={
-                canSeeFullIdentity
-                  ? 'Full identity visible to Owner/President'
-                  : 'Masked identity for campus student privacy'
-              }
-            >
+            <div className="flex items-center gap-1 text-slate-500">
               <UserIcon className="w-3.5 h-3.5 text-slate-400" />
               <span>{authorDisplay}</span>
             </div>

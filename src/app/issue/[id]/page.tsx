@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSunwai } from '@/lib/store';
 import { Timeline } from '@/components/Timeline';
 import { CommentSection } from '@/components/CommentSection';
+import { IssueSeverity } from '@/types';
 import {
   ChevronUp,
   Clock,
@@ -24,6 +25,7 @@ import {
   X,
   PlayCircle,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,6 +45,7 @@ export default function IssueDetailPage() {
     completeIssue,
     rejectIssue,
     redirectIssue,
+    setIssueSeverity,
     confirmResolution,
     reopenIssue,
     withdrawIssue,
@@ -65,6 +68,7 @@ export default function IssueDetailPage() {
   const [rejectionReason, setRejectionReason] = useState('Duplicate request');
   const [redirectRoleId, setRedirectRoleId] = useState('');
   const [modalError, setModalError] = useState('');
+  const [notification, setNotification] = useState<string | null>(null);
 
   if (!issue) {
     return (
@@ -88,8 +92,8 @@ export default function IssueDetailPage() {
   const isOwner = currentUserRole?.id === issue.owner_role_id;
   const isRaiser = issue.raised_by === currentUser.id;
   const isVoted = userVotes.has(issue.id);
+  const isCouncilMember = Boolean(currentUserRole);
 
-  // Status updates for this issue
   const issueUpdates = statusUpdates.filter((u) => u.issue_id === issue.id);
 
   // Public Identity Rule
@@ -133,46 +137,53 @@ export default function IssueDetailPage() {
         return;
       }
       acknowledgeIssue(issue.id, actionNote.trim());
+      setNotification('Issue acknowledged. 48-hour SLA deadline cleared.');
     } else if (activeModal === 'in_progress') {
       if (!actionNote.trim()) {
         setModalError('Please describe the immediate next action being taken.');
         return;
       }
       startWork(issue.id, actionNote.trim());
+      setNotification('Issue moved to In Progress. Weekly update schedule activated.');
     } else if (activeModal === 'update') {
       if (!actionNote.trim()) {
         setModalError('Please write an update note on progress.');
         return;
       }
       postProgressUpdate(issue.id, actionNote.trim(), actionPhotoUrl.trim() || undefined);
+      setNotification('Weekly progress update recorded to timeline.');
     } else if (activeModal === 'complete') {
       if (!actionNote.trim()) {
         setModalError('Resolution details and proof description are required.');
         return;
       }
       completeIssue(issue.id, actionNote.trim(), actionPhotoUrl.trim() || undefined);
+      setNotification('Issue marked Completed. 7-day student review window opened.');
     } else if (activeModal === 'reject') {
       if (!actionNote.trim()) {
         setModalError('Detailed justification for rejection is required.');
         return;
       }
       rejectIssue(issue.id, rejectionReason, actionNote.trim());
+      setNotification('Issue rejected with formal justification.');
     } else if (activeModal === 'redirect') {
       if (!redirectRoleId) {
-        setModalError('Please select the appropriate council role.');
+        setModalError('Please select the target council role.');
         return;
       }
       if (!actionNote.trim()) {
         setModalError('Reason for redirect is required.');
         return;
       }
-      redirectIssue(issue.id, redirectRoleId, actionNote.trim());
+      const res = redirectIssue(issue.id, redirectRoleId, actionNote.trim());
+      setNotification(res.message);
     } else if (activeModal === 'reopen') {
       if (!actionNote.trim()) {
         setModalError('Please state why the resolution was unsatisfactory.');
         return;
       }
       reopenIssue(issue.id, actionNote.trim());
+      setNotification('Issue reopened by student and returned to In Progress.');
     }
 
     setActiveModal('none');
@@ -190,6 +201,18 @@ export default function IssueDetailPage() {
         <span className="font-mono">Issue #{issue.id.slice(-6)}</span>
       </div>
 
+      {notification && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{notification}</span>
+          </div>
+          <button onClick={() => setNotification(null)} className="text-emerald-700 hover:text-emerald-900 font-bold">
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Main Issue Header Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
         {/* Top Badges & Upvote */}
@@ -198,6 +221,20 @@ export default function IssueDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-xs px-3 py-1 rounded-full font-bold border ${getStatusBadge()}`}>
                 {issue.status}
+              </span>
+
+              {/* Severity Flag Badge (C6) */}
+              <span
+                className={`text-xs px-2.5 py-1 rounded-full font-bold border flex items-center gap-1 ${
+                  issue.severity === 'Critical'
+                    ? 'bg-rose-600 text-white border-rose-700 shadow-sm animate-pulse'
+                    : issue.severity === 'High'
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                {issue.severity === 'Critical' && <AlertTriangle className="w-3.5 h-3.5" />}
+                {issue.severity} Severity
               </span>
 
               {issue.is_priority && (
@@ -209,6 +246,13 @@ export default function IssueDetailPage() {
               {issue.is_reopened && (
                 <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-amber-500 text-white">
                   Reopened by Student
+                </span>
+              )}
+
+              {/* Redirect Counter (C5) */}
+              {issue.redirect_count > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-md bg-purple-100 text-purple-800 border border-purple-200 font-mono font-bold">
+                  Redirected ({issue.redirect_count}/2)
                 </span>
               )}
 
@@ -297,7 +341,7 @@ export default function IssueDetailPage() {
           </div>
 
           <div>
-            <span className="text-slate-400 block mb-0.5 font-medium">Response SLA / Deadline:</span>
+            <span className="text-slate-400 block mb-0.5 font-medium">SLA Deadlines:</span>
             <div className="flex items-center gap-1.5 font-bold text-slate-800">
               <Clock className="w-4 h-4 text-amber-600" />
               <span>
@@ -307,15 +351,44 @@ export default function IssueDetailPage() {
                       minute: '2-digit',
                     })}`
                   : issue.status === 'In Progress'
-                  ? 'Update due in 7 days'
+                  ? 'Weekly update in 7d'
                   : 'SLA Met'}
               </span>
             </div>
             <span className="text-[11px] text-slate-400">
-              {issue.redirect_count > 0 ? `${issue.redirect_count} redirect(s)` : 'Direct routing'}
+              {issue.redirect_count > 0 ? `Redirect ${issue.redirect_count}/2` : 'Primary assignment'}
             </span>
           </div>
         </div>
+
+        {/* C6 Severity Setter (for Cabinet Members & President) */}
+        {isCouncilMember && issue.status !== 'Closed' && issue.status !== 'Withdrawn' && (
+          <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-slate-600" />
+              <span className="font-semibold text-slate-700">Council Severity Override (C6):</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {(['Normal', 'High', 'Critical'] as IssueSeverity[]).map((sev) => (
+                <button
+                  key={sev}
+                  onClick={() => setIssueSeverity(issue.id, sev)}
+                  className={`px-3 py-1 rounded-md font-bold text-xs transition-all ${
+                    issue.severity === sev
+                      ? sev === 'Critical'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : sev === 'High'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-slate-700 text-white shadow-sm'
+                      : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
+                  }`}
+                >
+                  {sev}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ACTION CONTROLS BAR: For Assigned Owner, President, and Student */}
         <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
@@ -327,7 +400,7 @@ export default function IssueDetailPage() {
                 {(issue.status === 'Raised' || issue.status === 'Escalated L1') && (
                   <button
                     onClick={() => setActiveModal('acknowledge')}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     <CheckCircle2 className="w-4 h-4" /> Acknowledge Issue
                   </button>
@@ -337,7 +410,7 @@ export default function IssueDetailPage() {
                 {issue.status === 'Acknowledged' && (
                   <button
                     onClick={() => setActiveModal('in_progress')}
-                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     <PlayCircle className="w-4 h-4" /> Start Work (In Progress)
                   </button>
@@ -347,7 +420,7 @@ export default function IssueDetailPage() {
                 {issue.status === 'In Progress' && (
                   <button
                     onClick={() => setActiveModal('update')}
-                    className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
                   >
                     <Clock className="w-4 h-4" /> Post Progress Update
                   </button>
@@ -357,7 +430,7 @@ export default function IssueDetailPage() {
                 {issue.status === 'In Progress' && (
                   <button
                     onClick={() => setActiveModal('complete')}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     <FileCheck2 className="w-4 h-4" /> Close as Completed
                   </button>
@@ -373,13 +446,13 @@ export default function IssueDetailPage() {
                   </button>
                 )}
 
-                {/* C5: Redirect Issue */}
-                {issue.redirect_count < 2 && issue.status !== 'Completed' && (
+                {/* C5: Redirect Issue (with 2-redirect check) */}
+                {issue.status !== 'Completed' && (
                   <button
                     onClick={() => setActiveModal('redirect')}
                     className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium border border-slate-200 transition-all"
                   >
-                    Redirect to Another Role
+                    Redirect ({issue.redirect_count}/2)
                   </button>
                 )}
               </>
@@ -387,8 +460,8 @@ export default function IssueDetailPage() {
 
             {/* S9: STUDENT VERIFICATION ACTIONS (Confirm or Reopen) */}
             {isRaiser && issue.status === 'Completed' && (
-              <div className="flex items-center gap-2 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-                <span className="text-xs font-bold text-emerald-900">Student Resolution Review:</span>
+              <div className="flex items-center gap-2 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                <span className="text-xs font-bold text-emerald-900">7-Day Resolution Review:</span>
                 <button
                   onClick={() => confirmResolution(issue.id)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold flex items-center gap-1 shadow-sm"
@@ -444,7 +517,7 @@ export default function IssueDetailPage() {
               <Clock className="w-5 h-5 text-emerald-600" />
               <span>Lifecycle Audit Trail</span>
             </h2>
-            <span className="text-[11px] font-mono text-slate-400">Append-Only Record</span>
+            <span className="text-[11px] font-mono text-slate-400">Append-Only Log</span>
           </div>
 
           <Timeline updates={issueUpdates} />
@@ -494,25 +567,36 @@ export default function IssueDetailPage() {
                 </div>
               )}
 
+              {/* Redirect Rule (C5): 2-redirect check warning */}
               {activeModal === 'redirect' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Redirect to Role:
-                  </label>
-                  <select
-                    value={redirectRoleId}
-                    onChange={(e) => setRedirectRoleId(e.target.value)}
-                    className="w-full p-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50"
-                  >
-                    <option value="">Select Target Council Role...</option>
-                    {roles
-                      .filter((r) => r.id !== issue.owner_role_id)
-                      .map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} ({r.inbox_email})
-                        </option>
-                      ))}
-                  </select>
+                <div className="space-y-2">
+                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-900">
+                    <span className="font-bold block mb-0.5">Redirect Rule (C5):</span>
+                    {issue.redirect_count === 0 && 'This will be Redirect #1 of 2. 48-hour clock will restart for new owner.'}
+                    {issue.redirect_count === 1 && '⚠️ Attention: This is the 2nd and FINAL direct redirect. Any subsequent redirect will automatically route to the President.'}
+                    {issue.redirect_count >= 2 && 'Notice: Maximum 2 redirects reached. This ticket will automatically route to the President for final determination.'}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Redirect to Role:
+                    </label>
+                    <select
+                      value={redirectRoleId}
+                      onChange={(e) => setRedirectRoleId(e.target.value)}
+                      className="w-full p-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50"
+                      disabled={issue.redirect_count >= 2}
+                    >
+                      <option value="">Select Target Council Role...</option>
+                      {roles
+                        .filter((r) => r.id !== issue.owner_role_id)
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} ({r.inbox_email})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
               )}
 

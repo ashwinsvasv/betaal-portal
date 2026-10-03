@@ -44,6 +44,7 @@ export interface User {
   hostel: string;
   is_active: boolean;
   avatar_url?: string;
+  created_at?: string;
 }
 
 export interface CouncilRole {
@@ -52,6 +53,11 @@ export interface CouncilRole {
   category_domain?: IssueCategory;
   inbox_email: string;
   holder_user_id: string;
+}
+
+export interface CoursePrefix {
+  prefix: string;
+  course_name: string;
 }
 
 export interface RoutingRule {
@@ -94,6 +100,8 @@ export interface Issue {
   is_reopened?: boolean;
   reopen_count?: number;
   rejection_reason?: string;
+  held_for_review?: boolean; // Sprint 3 abuse / naming check
+  held_reason?: string;
   photos: string[];
   created_at: string;
   updated_at: string;
@@ -145,6 +153,7 @@ export interface EmailOutboxItem {
 export interface AuditLogItem {
   id: string;
   actor_id: string;
+  actor_name?: string;
   action: string;
   target: string;
   details: string;
@@ -175,4 +184,15 @@ export interface CronRunReport {
   updateBreachesCount: number;
   autoClosedCount: number;
   logs: string[];
+}
+
+export interface StudentUploadRow {
+  roll_no: string;
+  name: string;
+  email: string;
+  hostel: string;
+  course: string;
+  batch: string;
+  isValid: boolean;
+  error?: string;
 }

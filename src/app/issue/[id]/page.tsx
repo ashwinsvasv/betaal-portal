@@ -12,6 +12,7 @@ import {
   Building,
   User as UserIcon,
   ShieldCheck,
+  ShieldAlert,
   Flame,
   CheckCircle2,
   AlertTriangle,
@@ -55,6 +56,7 @@ export default function IssueDetailPage() {
     getUserRole,
     statusUpdates,
     roles,
+    canUserViewIssue,
   } = useSunwai();
 
   const issue = issues.find((i) => i.id === issueId);
@@ -85,12 +87,68 @@ export default function IssueDetailPage() {
     );
   }
 
-  const raiser = getUserById(issue.raised_by);
-  const ownerRole = getRoleById(issue.owner_role_id);
   const currentUserRole = getUserRole(currentUser.id);
   const isPresident = currentUserRole?.name === 'President';
   const isOwner = currentUserRole?.id === issue.owner_role_id;
   const isRaiser = issue.raised_by === currentUser.id;
+  const isAdmin = currentUser.email === 'techadmin@iiml.ac.in' || currentUserRole?.name.toLowerCase().includes('admin');
+
+  // Sprint 3 Privacy Isolation Rule Check:
+  // Can current user read this issue?
+  const canView = canUserViewIssue(currentUser, issue);
+  if (!canView) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
+        <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900">Access Restricted · Private Issue</h2>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          This issue is marked <strong>Private</strong>. In accordance with Sunwai privacy governance rules, private issues are accessible strictly to the student who raised it, the assigned council owner, and the President.
+        </p>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-500 leading-relaxed text-left space-y-1.5">
+          <div className="font-bold text-slate-700">Privacy Policy Enforcement:</div>
+          <div>• <strong>Technical Administrator:</strong> Cannot read private issues (Admin is an infrastructure role, not an elected student representative).</div>
+          <div>• <strong>General Students:</strong> Cannot view confidential issues raised by peers.</div>
+        </div>
+        <div className="pt-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Return to Public Feed
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Held for Review Gate:
+  // "Issues that target a named person are held in a review queue, visible only to the admin, the president, and the person who raised them, until reviewed."
+  if (issue.held_for_review && !isAdmin && !isPresident && !isRaiser) {
+    return (
+      <div className="bg-white rounded-2xl border border-amber-200 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
+        <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900">Issue Held for Moderation Review</h2>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          This issue is currently held in the <strong>Admin Review Queue</strong> because it references a named individual. Once reviewed and approved by an administrator or President, it will appear publicly.
+        </p>
+        <div className="pt-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Return to Public Feed
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const raiser = getUserById(issue.raised_by);
+  const ownerRole = getRoleById(issue.owner_role_id);
   const isVoted = userVotes.has(issue.id);
   const isCouncilMember = Boolean(currentUserRole);
 
@@ -210,6 +268,28 @@ export default function IssueDetailPage() {
           <button onClick={() => setNotification(null)} className="text-emerald-700 hover:text-emerald-900 font-bold">
             ✕
           </button>
+        </div>
+      )}
+
+      {issue.held_for_review && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-bold text-sm">Issue Held in Admin Review Queue</div>
+              <p className="text-xs text-amber-800">
+                {issue.held_reason || 'This issue references an individual and requires moderation review before appearing in public feeds.'}
+              </p>
+            </div>
+          </div>
+          {(isAdmin || isPresident) && (
+            <Link
+              href="/admin"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+            >
+              Review in Admin Portal →
+            </Link>
+          )}
         </div>
       )}
 

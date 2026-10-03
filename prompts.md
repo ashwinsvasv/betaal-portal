@@ -2,7 +2,7 @@
 
 **Project:** Sunwai (सुनवाई) — Student Council Issue-Tracking Portal, IIM Lucknow  
 **Event:** Overtures / Synapse  
-**Sprints Covered:** Sprint 1 (Overtures MVP: Core Loop) & Sprint 2 (Accountability)  
+**Sprints Covered:** Sprint 1 (Overtures MVP: Core Loop), Sprint 2 (Accountability), & Sprint 3 (Admin & Safety)  
 **AI Coding Tool Disclosed:** Claude Code / Advanced Agentic Pair Programmer  
 **Date:** October 3, 2026  
 
@@ -10,12 +10,13 @@
 
 ## 1. Executive Summary & AI Disclosure
 
-As required by the Overtures submission guidelines, this document records the prompts, architectural decisions, and agentic workflows used to build **Sprint 1 (Core Loop)** and **Sprint 2 (Accountability)** of **Sunwai**.
+As required by the Overtures submission guidelines, this document records the prompts, architectural decisions, and agentic workflows used to build **Sprint 1 (Core Loop)**, **Sprint 2 (Accountability)**, and **Sprint 3 (Admin & Safety)** of **Sunwai**.
 
-Sunwai turns complaints into formal, trackable tickets with deterministic owner assignment, 48-hour SLAs, append-only audit trails, and automatic council escalations.
+Sunwai turns complaints into formal, trackable tickets with deterministic owner assignment, 48-hour SLAs, append-only audit trails, automatic council escalations, and strict privacy boundaries.
 
 - **Sprint 1 Exit Test:** *"Demo the hot-water story end to end on the live site."* (Passed)
 - **Sprint 2 Exit Test:** *"An unacknowledged test issue escalates on its own."* (Passed)
+- **Sprint 3 Exit Test:** *"A 2,000-row upload works, and private issues are invisible to the wrong roles."* (Passed)
 
 ---
 
@@ -74,7 +75,45 @@ Sprint 2 requires enforcing accountability mechanisms so issues cannot sit idle:
 
 ---
 
-## 4. Exit Test Verification Matrix
+## 4. Sprint 3 Trajectory: Admin & Safety
+
+### Phase 6: Real Student Data, Moderation & Privacy Rules
+**User Prompt:**
+> "let's to sprint three"
+
+**Agent Reasoning & Sprint 3 Plan:**
+Sprint 3 introduces administrative operations, institute data onboarding, moderation systems, and row-level privacy boundaries:
+1. **A1. Bulk Student Upload (2,000 Rows)**:
+   - Roll number prefix parser in `src/lib/student-upload.ts`: splits prefixes (`PGP42069` $\rightarrow$ Course `PGP`, Batch `42`; `ABM22045` $\rightarrow$ Course `ABM`, Batch `22`; `IPMX10012` $\rightarrow$ Course `IPMX`, Batch `10`).
+   - Domain validation (`@iiml.ac.in`).
+   - Built-in generator creating 2,000 realistic student rows with valid course batches and intentional syntax errors to verify error highlighting.
+   - Batch import preview with filtering by "Errors Only" or "Valid Only", before committing to database.
+2. **A2. User Management & Deactivation**:
+   - Directory search across all enrolled students.
+   - Profile creation & editing.
+   - Activation / deactivation toggle: deactivated students cannot log in or raise tickets, but their past issues, votes, and comments remain preserved.
+3. **A3. Council Role Assignment**:
+   - Assign holder students to council roles dynamically.
+   - Custom role inbox email configuration.
+4. **A4. Content Moderation & Comment Removal**:
+   - Reason-coded comment removal categories (Harassment, Profanity, Rumors, Spam, PII).
+   - Replaced in timeline with `[Comment removed by admin: ...]`.
+5. **A5. Moderation Philosophy & Named Person Detection**:
+   - Frustrated complaints are allowed; abusive words trigger polite rephrasing reminders.
+   - Complaints referencing specific named individuals are automatically held in the **Admin Review Queue** (`held_for_review = true`) until approved by an administrator or the President.
+6. **A6. Abuse Word List Manager**:
+   - Interactive dictionary management for campus moderation.
+7. **A7. Append-Only Audit Log**:
+   - Complete tracking of user additions, deactivations, role assignments, bulk enrollments, and moderation queue approvals.
+8. **Row-Level Security / Privacy Rules Enforcement**:
+   - Public issues: viewable by all active users.
+   - Private issues: accessible strictly to Raiser, Assigned Owner Role holder, and President.
+   - **Crucial Spec Rule**: Technical Administrator is strictly prohibited from reading private issues.
+   - Interactive 6-persona automated verification suite in `/admin#privacy`.
+
+---
+
+## 5. Exit Test Verification Matrix
 
 ### Sprint 1 Exit Test: The Hot-Water Story
 | Step | Action Taken | Expected Result | Verified Status |
@@ -97,3 +136,17 @@ Sprint 2 requires enforcing accountability mechanisms so issues cannot sit idle:
 | 5 | Test 2-Redirect Limit | In issue detail, redirect twice $\rightarrow$ 3rd redirect automatically routes to President with alert | Passed |
 | 6 | Test 8 AM Daily Digest | Click "Generate 8 AM Daily Digest" $\rightarrow$ multi-ticket digests compiled and dispatched to each role | Passed |
 | 7 | Test Email Retry Worker | In `/outbox`, click "Retry Failed" $\rightarrow$ failed delivery re-attempted and transitioned to `sent` | Passed |
+
+### Sprint 3 Exit Tests: 2,000-Student Upload & Privacy Isolation
+| Step | Action Taken | Expected Result | Verified Status |
+| --- | --- | --- | --- |
+| 1 | Roll Number Parsing | Test prefix splitting on `PGP42069`, `ABM22045`, `IPMX10012`, `PGPSM08001` $\rightarrow$ Course prefix and batch digits accurately parsed | Passed |
+| 2 | 2,000-Row Batch Upload | In `/admin`, click "Generate 2,000 Test Records" $\rightarrow$ 2,000 authentic records generated with batch prefix splitting and error highlighting | Passed |
+| 3 | Commit Enrolled Records | Click "Commit 1,998 Valid Students" $\rightarrow$ Database enrolls students, rejects invalid rows, records entry in Audit Log | Passed |
+| 4 | Raising Student Privacy | Student accesses private issue $\rightarrow$ Full read/edit access granted | Passed |
+| 5 | Role Owner Privacy | Assigned Treasurer accesses private issue $\rightarrow$ Full read/action access granted | Passed |
+| 6 | President Privacy | Student Council President accesses private issue $\rightarrow$ Full read/oversight access granted | Passed |
+| 7 | Technical Admin Privacy Gate | Admin (`techadmin@iiml.ac.in`) attempts to view private issue $\rightarrow$ Access strictly blocked with Privacy Restriction Notice | Passed |
+| 8 | General Student Privacy Gate | Unrelated student attempts to view private issue $\rightarrow$ Access strictly blocked | Passed |
+| 9 | Named Individual Moderation | Issue mentioning "Devashish Roy" raised $\rightarrow$ Held in Admin Review Queue; approved by admin moves to public feed | Passed |
+| 10 | Comment Moderation | Admin removes inappropriate comment $\rightarrow$ Text replaced with `[Comment removed by admin: ...]` and logged to audit | Passed |

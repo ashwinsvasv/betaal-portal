@@ -8,12 +8,14 @@ import {
   Comment,
   StatusUpdate,
   EmailOutboxItem,
+  AuditLogItem,
   IssueCategory,
   IssueScope,
   IssueVisibility,
   IssueStatus,
   IssueSeverity,
   CronRunReport,
+  StudentUploadRow,
 } from '@/types';
 import {
   SEED_USERS,
@@ -22,10 +24,12 @@ import {
   SEED_COMMENTS,
   SEED_STATUS_UPDATES,
   SEED_OUTBOX,
+  SEED_AUDIT_LOG,
 } from '@/lib/seed-data';
 import { determineSuggestedOwner } from '@/lib/routing';
 import { runComprehensiveDeadlineCheck, generateDailyDigests } from '@/lib/deadline-checker';
 import { createEmailItem, EmailTemplates } from '@/lib/email-service';
+import { DEFAULT_ABUSE_WORDS, checkIssueContent } from '@/lib/moderation';
 
 interface SunwaiContextType {
   currentUser: User;
@@ -36,6 +40,8 @@ interface SunwaiContextType {
   comments: Comment[];
   statusUpdates: StatusUpdate[];
   outbox: EmailOutboxItem[];
+  auditLog: AuditLogItem[];
+  abuseWords: string[];
   userVotes: Set<string>;
   lastCronReport: CronRunReport | null;
   simulatedClockOffsetHours: number;
@@ -72,13 +78,37 @@ interface SunwaiContextType {
   confirmResolution: (issueId: string, note?: string) => void;
   reopenIssue: (issueId: string, reason: string) => void;
 
-  // Comments
+  // Comments & Moderation
   addComment: (issueId: string, body: string) => void;
+  removeComment: (commentId: string, reason: string) => void;
 
   // Sprint 2 Deadline Engine & Cron
   runDeadlineChecker: (offsetHours?: number) => CronRunReport;
   triggerDailyDigest: () => number;
   retryFailedEmails: () => number;
+
+  // Sprint 3 Admin & Safety Tools
+  bulkImportStudents: (newStudents: StudentUploadRow[]) => { importedCount: number };
+  createUser: (userData: Omit<User, 'id'>) => User;
+  updateUser: (userId: string, data: Partial<User>) => void;
+  toggleUserActive: (userId: string, reason?: string) => void;
+  assignRoleHolder: (roleId: string, newHolderUserId: string, newInboxEmail?: string) => void;
+  reviewHeldIssue: (issueId: string, action: 'approve' | 'reject', adminNote?: string) => void;
+  updateAbuseWords: (words: string[]) => void;
+
+  // Privacy Rule & Authorization Checkers (Exit Test 2)
+  canUserViewIssue: (user: User, issue: Issue) => boolean;
+  testPrivacyIsolationSuite: () => {
+    passed: boolean;
+    results: {
+      role: string;
+      canViewOwn: boolean;
+      canViewAssigned: boolean;
+      canViewOtherPrivate: boolean;
+      expected: string;
+      status: 'PASS' | 'FAIL';
+    }[];
+  };
 
   // Helper queries
   getUserRole: (userId: string) => CouncilRole | undefined;
@@ -89,17 +119,19 @@ interface SunwaiContextType {
 
 const SunwaiContext = createContext<SunwaiContextType | null>(null);
 
-const STORAGE_KEY = 'sunwai_state_v2';
+const STORAGE_KEY = 'sunwai_state_v3';
 
 export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUserState] = useState<User>(SEED_USERS[11]); // Default to Rahul Sharma (PGP student)
-  const [users] = useState<User[]>(SEED_USERS);
-  const [roles] = useState<CouncilRole[]>(SEED_ROLES);
+  const [users, setUsers] = useState<User[]>(SEED_USERS);
+  const [roles, setRoles] = useState<CouncilRole[]>(SEED_ROLES);
 
   const [issues, setIssues] = useState<Issue[]>(SEED_ISSUES);
   const [comments, setComments] = useState<Comment[]>(SEED_COMMENTS);
   const [statusUpdates, setStatusUpdates] = useState<StatusUpdate[]>(SEED_STATUS_UPDATES);
   const [outbox, setOutbox] = useState<EmailOutboxItem[]>(SEED_OUTBOX);
+  const [auditLog, setAuditLog] = useState<AuditLogItem[]>(SEED_AUDIT_LOG);
+  const [abuseWords, setAbuseWords] = useState<string[]>(DEFAULT_ABUSE_WORDS);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set(['issue-hot-water']));
   const [lastCronReport, setLastCronReport] = useState<CronRunReport | null>(null);
   const [simulatedClockOffsetHours, setSimulatedClockOffsetHours] = useState<number>(0);
@@ -110,12 +142,16 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (parsed.users) setUsers(parsed.users);
+        if (parsed.roles) setRoles(parsed.roles);
         if (parsed.issues) setIssues(parsed.issues);
         if (parsed.comments) setComments(parsed.comments);
         if (parsed.statusUpdates) setStatusUpdates(parsed.statusUpdates);
         if (parsed.outbox) setOutbox(parsed.outbox);
+        if (parsed.auditLog) setAuditLog(parsed.auditLog);
+        if (parsed.abuseWords) setAbuseWords(parsed.abuseWords);
         if (parsed.currentUserId) {
-          const user = SEED_USERS.find((u) => u.id === parsed.currentUserId);
+          const user = (parsed.users || SEED_USERS).find((u: User) => u.id === parsed.currentUserId);
           if (user) setCurrentUserState(user);
         }
         if (parsed.userVotes) setUserVotes(new Set(parsed.userVotes));
@@ -135,10 +171,14 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
+          users,
+          roles,
           issues,
           comments,
           statusUpdates,
           outbox,
+          auditLog,
+          abuseWords,
           currentUserId: currentUser.id,
           userVotes: Array.from(userVotes),
           lastCronReport,
@@ -148,7 +188,20 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Error saving state:', e);
     }
-  }, [issues, comments, statusUpdates, outbox, currentUser, userVotes, lastCronReport, simulatedClockOffsetHours]);
+  }, [
+    users,
+    roles,
+    issues,
+    comments,
+    statusUpdates,
+    outbox,
+    auditLog,
+    abuseWords,
+    currentUser,
+    userVotes,
+    lastCronReport,
+    simulatedClockOffsetHours,
+  ]);
 
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
@@ -166,12 +219,30 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return users.find((u) => u.id === userId);
   };
 
+  const logAuditAction = (action: string, target: string, details: string) => {
+    const actorRole = getUserRole(currentUser.id);
+    const newEntry: AuditLogItem = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      actor_id: currentUser.id,
+      actor_name: `${currentUser.name} (${actorRole?.name || 'Student'})`,
+      action,
+      target,
+      details,
+      created_at: new Date().toISOString(),
+    };
+    setAuditLog((prev) => [newEntry, ...prev]);
+  };
+
   const resetDemoData = () => {
     localStorage.removeItem(STORAGE_KEY);
+    setUsers(SEED_USERS);
+    setRoles(SEED_ROLES);
     setIssues(SEED_ISSUES);
     setComments(SEED_COMMENTS);
     setStatusUpdates(SEED_STATUS_UPDATES);
     setOutbox(SEED_OUTBOX);
+    setAuditLog(SEED_AUDIT_LOG);
+    setAbuseWords(DEFAULT_ABUSE_WORDS);
     setCurrentUserState(SEED_USERS[11]);
     setUserVotes(new Set(['issue-hot-water']));
     setLastCronReport(null);
@@ -190,7 +261,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     setOutbox((prev) => [newItem, ...prev]);
   };
 
-  // S2, S3: Raise Issue
+  // S2, S3: Raise Issue with Sprint 3 Moderation Check (A5)
   const raiseIssue = (data: {
     title: string;
     details: string;
@@ -205,6 +276,9 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     const now = new Date();
     const ackDeadline = new Date(now.getTime() + 48 * 3600 * 1000).toISOString();
     const issueId = `issue-${Date.now()}`;
+
+    // Sprint 3 Moderation check: Does text target a named person?
+    const modResult = checkIssueContent(data.title, data.details, abuseWords);
 
     const newIssue: Issue = {
       id: issueId,
@@ -223,6 +297,8 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       vote_count: 1,
       redirect_count: 0,
       is_priority: false,
+      held_for_review: modResult.heldForReview,
+      held_reason: modResult.reason,
       photos: data.photos,
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
@@ -242,25 +318,36 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       actor_id: currentUser.id,
       from_status: 'Raised',
       to_status: 'Raised',
-      note: `Issue raised by ${currentUser.name} (${currentUser.course} ${currentUser.batch}) and assigned to ${getRoleById(data.ownerRoleId)?.name || 'Assigned Role'}. 48-hour response clock started.`,
+      note: modResult.heldForReview
+        ? `Issue submitted but held for admin review: ${modResult.reason}`
+        : `Issue raised by ${currentUser.name} (${currentUser.course} ${currentUser.batch}) and assigned to ${getRoleById(data.ownerRoleId)?.name || 'Assigned Role'}. 48-hour response clock started.`,
       created_at: now.toISOString(),
     };
     setStatusUpdates((prev) => [initialUpdate, ...prev]);
 
-    const ownerRole = getRoleById(data.ownerRoleId);
-    if (ownerRole) {
-      const email = createEmailItem(EmailTemplates.issueRaised(newIssue, ownerRole, currentUser));
-      setOutbox((prev) => [email, ...prev]);
-    }
+    if (!modResult.heldForReview) {
+      const ownerRole = getRoleById(data.ownerRoleId);
+      if (ownerRole) {
+        const email = createEmailItem(EmailTemplates.issueRaised(newIssue, ownerRole, currentUser));
+        setOutbox((prev) => [email, ...prev]);
+      }
 
-    if (data.ccRoleIds && data.ccRoleIds.length > 0) {
-      data.ccRoleIds.forEach((ccId) => {
-        const ccRole = getRoleById(ccId);
-        if (ccRole) {
-          const email = createEmailItem(EmailTemplates.issueRaisedCc(newIssue, ccRole));
-          setOutbox((prev) => [email, ...prev]);
-        }
-      });
+      if (data.ccRoleIds && data.ccRoleIds.length > 0) {
+        data.ccRoleIds.forEach((ccId) => {
+          const ccRole = getRoleById(ccId);
+          if (ccRole) {
+            const email = createEmailItem(EmailTemplates.issueRaisedCc(newIssue, ccRole));
+            setOutbox((prev) => [email, ...prev]);
+          }
+        });
+      }
+    } else {
+      // Audit log the held issue
+      logAuditAction(
+        'ISSUE_HELD_FOR_REVIEW',
+        `issues/${issueId}`,
+        `Complaint held for review due to targeting individual: "${modResult.detectedName}".`
+      );
     }
 
     return newIssue;
@@ -288,7 +375,6 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
           const isPriority = newVoteCount >= 200;
           let priorityDeadline = iss.priority_response_deadline;
 
-          // If freshly crossing 200 votes, set the 7-day response deadline
           if (isPriority && !iss.is_priority) {
             priorityDeadline = new Date(Date.now() + 7 * 86400 * 1000).toISOString();
             const ownerRole = getRoleById(iss.owner_role_id);
@@ -344,6 +430,8 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       created_at: now,
     };
     setStatusUpdates((prev) => [update, ...prev]);
+
+    logAuditAction('SEVERITY_CHANGED', `issues/${issueId}`, `Changed from ${prevSeverity} to ${severity}`);
   };
 
   // S5: Edit issue
@@ -391,6 +479,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIssues((prev) => prev.filter((i) => i.id !== issueId));
+    logAuditAction('ISSUE_DELETED_BY_STUDENT', `issues/${issueId}`, `Deleted prior to votes/acknowledgment.`);
     return true;
   };
 
@@ -665,7 +754,6 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     let finalRoleId = newRoleId;
     let autoPresidentNotice = false;
 
-    // Spec Rule: After 2 redirects, the next redirect goes to the President automatically
     if (nextRedirectCount >= 3) {
       const presRole = roles.find((r) => r.name === 'President');
       if (presRole) {
@@ -719,6 +807,8 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         issueId
       );
     }
+
+    logAuditAction('ISSUE_REDIRECTED', `issues/${issueId}`, `From ${oldRole?.name} to ${newRole?.name}. Reason: ${reason}`);
 
     return {
       success: true,
@@ -821,7 +911,173 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     setComments((prev) => [...prev, newComment]);
   };
 
-  // Sprint 2 Comprehensive Deadline Engine
+  // A4: Remove Comment (Admin)
+  const removeComment = (commentId: string, reason: string) => {
+    setComments((prev) =>
+      prev.map((c) => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            removed_by_admin: true,
+            removal_reason: reason,
+          };
+        }
+        return c;
+      })
+    );
+
+    logAuditAction('COMMENT_REMOVED', `comments/${commentId}`, `Comment marked removed. Reason: ${reason}`);
+  };
+
+  // A5: Review Held Issue (Admin)
+  const reviewHeldIssue = (issueId: string, action: 'approve' | 'reject', adminNote?: string) => {
+    const target = issues.find((i) => i.id === issueId);
+    if (!target) return;
+
+    const now = new Date().toISOString();
+    setIssues((prev) =>
+      prev.map((iss) => {
+        if (iss.id === issueId) {
+          return {
+            ...iss,
+            held_for_review: false,
+            status: action === 'approve' ? 'Raised' : 'Rejected',
+            rejection_reason: action === 'reject' ? `Admin moderation: ${adminNote || 'Policy violation'}` : undefined,
+            updated_at: now,
+          };
+        }
+        return iss;
+      })
+    );
+
+    const update: StatusUpdate = {
+      id: `upd-${Date.now()}`,
+      issue_id: issueId,
+      actor_id: currentUser.id,
+      from_status: target.status,
+      to_status: action === 'approve' ? 'Raised' : 'Rejected',
+      note: action === 'approve'
+        ? `Approved by Admin after review: ${adminNote || 'Cleared for public feed'}`
+        : `Rejected by Admin during review: ${adminNote || 'Violated campus guidelines'}`,
+      created_at: now,
+    };
+    setStatusUpdates((prev) => [update, ...prev]);
+
+    logAuditAction(
+      action === 'approve' ? 'HELD_ISSUE_APPROVED' : 'HELD_ISSUE_REJECTED',
+      `issues/${issueId}`,
+      `Admin decision: ${action}. Note: ${adminNote || 'None'}`
+    );
+  };
+
+  // A1: Bulk Student Import
+  const bulkImportStudents = (newStudents: StudentUploadRow[]): { importedCount: number } => {
+    const validRows = newStudents.filter((s) => s.isValid);
+
+    const newUsers: User[] = validRows.map((r, idx) => ({
+      id: `user-bulk-${Date.now()}-${idx}`,
+      roll_no: r.roll_no,
+      name: r.name,
+      email: r.email,
+      course: r.course,
+      batch: r.batch,
+      hostel: r.hostel,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    }));
+
+    setUsers((prev) => [...prev, ...newUsers]);
+
+    logAuditAction(
+      'USER_BULK_IMPORT',
+      'users',
+      `Enrolled ${newUsers.length} student accounts from batch upload file.`
+    );
+
+    return { importedCount: newUsers.length };
+  };
+
+  // A2: Create Individual User
+  const createUser = (userData: Omit<User, 'id'>): User => {
+    const newUser: User = {
+      ...userData,
+      id: `user-${Date.now()}`,
+      created_at: new Date().toISOString(),
+    };
+
+    setUsers((prev) => [...prev, newUser]);
+    logAuditAction('USER_CREATED', `users/${newUser.id}`, `Created ${newUser.name} (${newUser.roll_no})`);
+    return newUser;
+  };
+
+  // A2: Update Individual User
+  const updateUser = (userId: string, data: Partial<User>) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          return { ...u, ...data };
+        }
+        return u;
+      })
+    );
+    logAuditAction('USER_UPDATED', `users/${userId}`, `Updated profile details for user ID ${userId}`);
+  };
+
+  // A2: Deactivate / Activate User
+  const toggleUserActive = (userId: string, reason?: string) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const nextState = !target.is_active;
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          return { ...u, is_active: nextState };
+        }
+        return u;
+      })
+    );
+
+    logAuditAction(
+      nextState ? 'USER_ACTIVATED' : 'USER_DEACTIVATED',
+      `users/${userId}`,
+      `${target.name} (${target.roll_no}) marked ${nextState ? 'Active' : 'Deactivated'}. Reason: ${reason || 'Administrative action'}`
+    );
+  };
+
+  // A3: Assign Role Holder
+  const assignRoleHolder = (roleId: string, newHolderUserId: string, newInboxEmail?: string) => {
+    const role = roles.find((r) => r.id === roleId);
+    const newHolder = users.find((u) => u.id === newHolderUserId);
+    if (!role || !newHolder) return;
+
+    setRoles((prev) =>
+      prev.map((r) => {
+        if (r.id === roleId) {
+          return {
+            ...r,
+            holder_user_id: newHolderUserId,
+            inbox_email: newInboxEmail || r.inbox_email,
+          };
+        }
+        return r;
+      })
+    );
+
+    logAuditAction(
+      'ROLE_REASSIGNED',
+      `roles/${roleId}`,
+      `${role.name} reassigned to ${newHolder.name} (${newHolder.roll_no}). Inbox: ${newInboxEmail || role.inbox_email}`
+    );
+  };
+
+  // A6: Update Abuse Word List
+  const updateAbuseWords = (words: string[]) => {
+    setAbuseWords(words);
+    logAuditAction('ABUSE_WORDS_UPDATED', 'system/moderation', `Updated moderation word list (${words.length} terms).`);
+  };
+
+  // Sprint 2 Deadline Checker
   const runDeadlineChecker = (offsetHours: number = simulatedClockOffsetHours): CronRunReport => {
     const result = runComprehensiveDeadlineCheck({
       issues,
@@ -841,7 +1097,6 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return result.report;
   };
 
-  // Daily 8 AM Digest Trigger
   const triggerDailyDigest = (): number => {
     const digests = generateDailyDigests(issues, roles);
     if (digests.length > 0) {
@@ -850,7 +1105,6 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return digests.length;
   };
 
-  // Outbox Retry Mechanism for Failed Emails
   const retryFailedEmails = (): number => {
     let retriedCount = 0;
     setOutbox((prev) =>
@@ -858,7 +1112,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         if (item.status === 'failed') {
           retriedCount++;
           const nextAttempts = item.attempts + 1;
-          const isSuccess = nextAttempts >= 2; // Succeed on retry
+          const isSuccess = nextAttempts >= 2;
           return {
             ...item,
             attempts: nextAttempts,
@@ -873,6 +1127,112 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return retriedCount;
   };
 
+  // Sprint 3 Row-Level Security / Privacy Rule Checker
+  // Spec rule:
+  // Public: visible to everyone.
+  // Private:
+  // - Raiser: visible
+  // - Assigned role holder: visible
+  // - President: visible
+  // - Admin: NOT VISIBLE!
+  // - General students: NOT VISIBLE
+  const canUserViewIssue = (user: User, issue: Issue): boolean => {
+    if (issue.visibility === 'public') return true;
+
+    // Admin is explicitly blocked from reading private issues
+    const role = getUserRole(user.id);
+    if (user.email === 'techadmin@iiml.ac.in' || role?.name.toLowerCase().includes('admin')) {
+      return false;
+    }
+
+    // Raiser can see own
+    if (issue.raised_by === user.id) return true;
+
+    // President can see all private issues
+    if (role?.name === 'President') return true;
+
+    // Assigned owner role holder can see assigned private issues
+    if (role && issue.owner_role_id === role.id) return true;
+
+    return false;
+  };
+
+  // Exit Test 2: Automated Privacy Isolation Verification Suite
+  const testPrivacyIsolationSuite = () => {
+    const testPrivateIssue: Issue = {
+      id: 'issue-test-private',
+      raised_by: 'user-stu-1', // Rahul Sharma
+      title: 'Private Test Issue: Personal Hostel Allowance',
+      details: 'Confidential reimbursement matter',
+      category: 'Finance and reimbursements',
+      scope: 'my room',
+      hostel: 'Hostel 3',
+      visibility: 'private',
+      status: 'Raised',
+      severity: 'Normal',
+      owner_role_id: 'role-treasurer', // Siddharth Jain
+      ack_deadline: new Date().toISOString(),
+      vote_count: 1,
+      redirect_count: 0,
+      is_priority: false,
+      photos: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const studentUser = users.find((u) => u.id === 'user-stu-1')!;
+    const otherStudent = users.find((u) => u.id === 'user-stu-2')!;
+    const ownerUser = users.find((u) => u.id === 'user-treasurer')!;
+    const presidentUser = users.find((u) => u.id === 'user-pres')!;
+    const adminUser = users.find((u) => u.id === 'user-admin')!;
+
+    const results = [
+      {
+        role: 'Raiser (Rahul Sharma - Student)',
+        canViewOwn: canUserViewIssue(studentUser, testPrivateIssue),
+        canViewAssigned: true,
+        canViewOtherPrivate: false,
+        expected: 'Can view own private ticket',
+        status: canUserViewIssue(studentUser, testPrivateIssue) ? ('PASS' as const) : ('FAIL' as const),
+      },
+      {
+        role: 'Other Student (Priya Nair - Student)',
+        canViewOwn: false,
+        canViewAssigned: false,
+        canViewOtherPrivate: canUserViewIssue(otherStudent, testPrivateIssue),
+        expected: 'BLOCKED from viewing other student private ticket',
+        status: !canUserViewIssue(otherStudent, testPrivateIssue) ? ('PASS' as const) : ('FAIL' as const),
+      },
+      {
+        role: 'Assigned Owner (Treasurer - Siddharth)',
+        canViewOwn: false,
+        canViewAssigned: canUserViewIssue(ownerUser, testPrivateIssue),
+        canViewOtherPrivate: false,
+        expected: 'Can view assigned private ticket',
+        status: canUserViewIssue(ownerUser, testPrivateIssue) ? ('PASS' as const) : ('FAIL' as const),
+      },
+      {
+        role: 'President (Ashwin Narayan)',
+        canViewOwn: true,
+        canViewAssigned: true,
+        canViewOtherPrivate: canUserViewIssue(presidentUser, testPrivateIssue),
+        expected: 'Can view ALL private issues campus-wide',
+        status: canUserViewIssue(presidentUser, testPrivateIssue) ? ('PASS' as const) : ('FAIL' as const),
+      },
+      {
+        role: 'Tech Admin (Admin Role)',
+        canViewOwn: false,
+        canViewAssigned: false,
+        canViewOtherPrivate: canUserViewIssue(adminUser, testPrivateIssue),
+        expected: 'STRICTLY BLOCKED from viewing private issues (Spec Rule)',
+        status: !canUserViewIssue(adminUser, testPrivateIssue) ? ('PASS' as const) : ('FAIL' as const),
+      },
+    ];
+
+    const passed = results.every((r) => r.status === 'PASS');
+    return { passed, results };
+  };
+
   return (
     <SunwaiContext.Provider
       value={{
@@ -884,6 +1244,8 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         comments,
         statusUpdates,
         outbox,
+        auditLog,
+        abuseWords,
         userVotes,
         lastCronReport,
         simulatedClockOffsetHours,
@@ -903,9 +1265,19 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
         confirmResolution,
         reopenIssue,
         addComment,
+        removeComment,
         runDeadlineChecker,
         triggerDailyDigest,
         retryFailedEmails,
+        bulkImportStudents,
+        createUser,
+        updateUser,
+        toggleUserActive,
+        assignRoleHolder,
+        reviewHeldIssue,
+        updateAbuseWords,
+        canUserViewIssue,
+        testPrivacyIsolationSuite,
         getUserRole,
         getRoleById,
         getUserById,

@@ -16,6 +16,7 @@ import {
   BarChart3,
   AlertTriangle,
   FastForward,
+  ShieldAlert,
 } from 'lucide-react';
 import { PersonaSwitcherModal } from './PersonaSwitcherModal';
 import { DeadlineControlModal } from './DeadlineControlModal';
@@ -46,6 +47,7 @@ export function Navbar() {
   ).length;
 
   const failedEmailsCount = outbox.filter((i) => i.status === 'failed').length;
+  const heldIssuesCount = issues.filter((i) => i.held_for_review).length;
 
   return (
     <>
@@ -241,6 +243,24 @@ export function Navbar() {
                 {presidentAlertsCount > 0 && (
                   <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                     {presidentAlertsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Admin Portal (Sprint 3) */}
+              <Link
+                href="/admin"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors whitespace-nowrap ${
+                  pathname.startsWith('/admin')
+                    ? 'bg-white text-zinc-900 shadow-sm border border-slate-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 text-slate-700" />
+                <span>Admin Portal</span>
+                {heldIssuesCount > 0 && (
+                  <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5" title="Held for review">
+                    {heldIssuesCount}
                   </span>
                 )}
               </Link>

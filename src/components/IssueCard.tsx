@@ -214,6 +214,14 @@ export function IssueCard({ issue }: Props) {
               Private
             </span>
           )}
+
+          {/* Held for review badge (A5) */}
+          {issue.held_for_review && (
+            <span className="text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-semibold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-600" />
+              Held for Review
+            </span>
+          )}
         </div>
 
         {/* Title */}

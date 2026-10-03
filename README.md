@@ -1,5 +1,5 @@
 # Sunwai (सुनवाई) — Student Council Issue-Tracking Portal
-### Indian Institute of Management Lucknow · Sprints 1 & 2 Complete
+### Indian Institute of Management Lucknow · Sprints 1, 2 & 3 Complete
 
 > *"Sunwai gives every student complaint at IIM Lucknow an owner, a deadline and a public status, so no issue can be silently ignored."*
 
@@ -36,6 +36,53 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 > [!NOTE]
 > Sunwai is equipped with an integrated reactive state store with seed data for 30 students, 10 realistic issues, and council roles. It works out of the box with zero external configuration!
 > For cloud database integration, configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` and run `supabase/migrations/20261003_sprint1_schema.sql`.
+
+---
+
+## 🧪 Sprint 3 Exit Tests: 2,000-Row Student Upload & Privacy Isolation
+
+The Sprint 3 exit criteria require:
+> *"A 2,000-row upload works, and private issues are invisible to the wrong roles."*
+
+### Exit Test 1: 2,000-Student Bulk Upload (A1)
+1. **Navigate to the Admin Portal (`/admin`)**:
+   - Click **Admin Portal** in the navigation bar.
+2. **Open the "Bulk Student Upload" Tab**:
+   - Click the **"Generate 2,000 Test Records"** button to synthesize 2,000 authentic student records across PGP, ABM, IPM, and IPMX batches.
+3. **Verify Prefix Splitting & Validation Preview**:
+   - The preview table parses roll numbers instantaneously:
+     - `PGP42069` $\rightarrow$ Course: **PGP**, Batch: **42**
+     - `ABM22045` $\rightarrow$ Course: **ABM**, Batch: **22**
+     - `IPMX10012` $\rightarrow$ Course: **IPMX**, Batch: **10**
+   - The validation engine checks for valid `@iiml.ac.in` email format and highlights rows with unrecognized roll prefixes in red.
+   - Filter by **"Errors Only"** or **"Valid Only"** to review parsed records.
+4. **Commit Bulk Enrollment**:
+   - Click **"Commit 1,998 Valid Students to Database"**.
+   - Notice the enrolled student count updates in real-time and an append-only entry is added to the **Audit Log (A7)**.
+
+---
+
+### Exit Test 2: Role-by-Role Privacy Isolation (RLS)
+Sunwai enforces strict Row-Level Security:
+- **Public issues**: Visible to all active students and council members.
+- **Private issues**: Visible *only* to the **Raiser**, the **Assigned Council Owner**, and the **President**.
+- **Crucial Rule:** The **Technical Admin cannot read private issues**, because administrator is a technical operations role, not a student representation role.
+
+To verify privacy isolation:
+1. **Automated Verification Suite (`/admin`)**:
+   - In the **Admin Portal**, click the **"Privacy Isolation Test"** tab.
+   - Click **"Run Automated 5-Role Privacy Test"**.
+   - The suite executes an isolation test for a private ticket (`Confidential reimbursement matter`) across 6 distinct personas:
+     - ✅ Raising Student: **ACCESS GRANTED**
+     - ✅ Assigned Role Owner (Treasurer): **ACCESS GRANTED**
+     - ✅ Student Council President: **ACCESS GRANTED**
+     - 🛑 Technical Administrator: **ACCESS STRICTLY DENIED**
+     - 🛑 General Student: **ACCESS STRICTLY DENIED**
+     - 🛑 Unrelated Council Chair (Sports): **ACCESS STRICTLY DENIED**
+2. **Interactive UI Verification**:
+   - Open a private issue directly, e.g., `/issue/issue-test-private` (or raise a private issue via `/raise`).
+   - Switch persona to **Technical Administrator (`techadmin@iiml.ac.in`)**: The page renders the **Access Restricted · Private Issue** security gate.
+   - Switch persona to **President (`Ashwin Narayan`)**: Full issue details, timeline, and actions become visible immediately.
 
 ---
 
@@ -119,6 +166,18 @@ The Sprint 2 exit test requires verifying that **an unacknowledged test issue es
 | **C6 Flag** | Severity Flags (Normal, High, Critical) | ✅ Completed | Council members & President can toggle severity; critical items float to top |
 | **C7 Dashboard**| Area Dashboards (`/area-dashboard`) | ✅ Completed | Comprehensive metrics by secretariat: open, overdue, avg days to close, reopen rate, severity mix |
 
+### Sprint 3: Admin & Safety
+| Requirement ID | Specification Requirement | Status | Implementation Details |
+| --- | --- | --- | --- |
+| **A1** | Bulk Student Upload (2,000 Rows) | ✅ Completed | Roll prefix parser (`PGP`, `ABM`, `IPM`, `IPMX`), `@iiml.ac.in` domain validation, error highlighting, commit preview |
+| **A2** | User Management & Deactivation | ✅ Completed | Search directory, create/edit student records, activate/deactivate with state preservation and audit logs |
+| **A3** | Role Management | ✅ Completed | Assign holder user to council roles, configure custom role inbox emails |
+| **A4** | Content Moderation (Comments) | ✅ Completed | Remove violating comments with structured categories; replaced with `[Comment removed by admin: ...]` |
+| **A5** | Moderation Philosophy | ✅ Completed | Abusive word checks prompt polite rephrasing; complaints naming individuals held in Admin Review Queue |
+| **A6** | Abuse Word List Manager | ✅ Completed | Dynamic custom abuse words dictionary in Admin Portal |
+| **A7** | Append-Only Audit Log | ✅ Completed | Complete chronological audit log of all admin, role, user, and moderation decisions |
+| **Privacy / RLS**| Role-Based Privacy Isolation | ✅ Completed | Row-level security: private issues visible only to Raiser, Owner, and President; Technical Admin strictly blocked |
+
 ---
 
 ## 🧱 Database Schema & Architecture
@@ -129,7 +188,7 @@ Sunwai's database is modeled around 11 relational tables in PostgreSQL:
 - `course_prefixes`: Prefix matching for roll numbers (`PGP`, `ABM`, `IPM`, `IPMX`).
 - `roles`: Student council positions with individual holder user IDs and role inboxes.
 - `routing_rules`: Deterministic `category + scope -> owner_role + cc_roles` mapping.
-- `issues`: Primary complaints table with `ack_deadline`, `vote_count`, `severity`, and `is_priority`.
+- `issues`: Primary complaints table with `ack_deadline`, `vote_count`, `severity`, `is_priority`, and `held_for_review`.
 - `issue_photos`: Uploaded image proofs and compressed photos.
 - `votes`: Composite key `(issue_id, user_id)` guaranteeing zero duplicate votes.
 - `comments`: Discussion threads with admin moderation flags.
@@ -147,28 +206,31 @@ Sunwai/
 │   ├── app/
 │   │   ├── layout.tsx                     # Root layout with SunwaiProvider & Navbar
 │   │   ├── page.tsx                       # Public Feed & Discovery (S6, S7)
-│   │   ├── raise/page.tsx                 # Raise Issue Wizard (S2, S3)
-│   │   ├── issue/[id]/page.tsx            # Issue Detail, Timeline, C6 Severity & C5 Redirect
+│   │   ├── raise/page.tsx                 # Raise Issue Wizard (S2, S3, A5)
+│   │   ├── issue/[id]/page.tsx            # Issue Detail, Timeline, Privacy Gate & Held Queue
 │   │   ├── my-issues/page.tsx             # Student Issues & Confirmation/Reopen (S4, S5, S9)
 │   │   ├── inbox/page.tsx                 # Owner Inbox (C1-C5)
 │   │   ├── area-dashboard/page.tsx        # Secretariat Area Performance Dashboard (C7)
+│   │   ├── admin/page.tsx                 # Full Admin Portal: Upload, Users, Roles, Moderation, Audit (A1-A7)
 │   │   ├── outbox/page.tsx                # Outbox & Notification Center with Retries (S10)
 │   │   ├── president/page.tsx             # President Dashboard (P1-P3)
 │   │   ├── api/cron/deadline-checker/     # Hourly Deadline Checker Cron API
 │   │   └── api/cron/daily-digest/         # 8 AM Daily Digest Cron API
 │   ├── components/
 │   │   ├── Navbar.tsx                     # Top navigation & demo controls
-│   │   ├── IssueCard.tsx                  # Upvote card with severity and identity masking
+│   │   ├── IssueCard.tsx                  # Upvote card with severity, identity masking, held badges
 │   │   ├── Timeline.tsx                   # Append-only status progression
-│   │   ├── CommentSection.tsx             # Threaded discussion with role badges
+│   │   ├── CommentSection.tsx             # Threaded discussion with role badges & moderation
 │   │   ├── PersonaSwitcherModal.tsx       # Fast role impersonation
 │   │   ├── EmailOutboxModal.tsx           # Quick email drawer modal
 │   │   └── DeadlineControlModal.tsx       # Time-travel & escalation simulator
 │   ├── lib/
 │   │   ├── deadline-checker.ts            # SLA deadline & escalation rule engine
 │   │   ├── email-service.ts               # Email dispatch templates & outbox queue
+│   │   ├── student-upload.ts              # 2,000-row batch parser, prefix splitter, validator (A1)
+│   │   ├── moderation.ts                  # Abuse word dictionary & named person detector (A5)
 │   │   ├── routing.ts                     # Deterministic routing table
-│   │   ├── seed-data.ts                   # 30 students, 10 realistic issues, council roles
+│   │   ├── seed-data.ts                   # 30 students, 10 realistic issues, council roles, audit log
 │   │   ├── store.tsx                      # Context state & localStorage synchronization
 │   │   └── supabase.ts                    # Supabase client configuration
 │   └── types/

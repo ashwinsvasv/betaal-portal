@@ -60,6 +60,11 @@ export default function PublicFeedPage() {
           return false;
         }
 
+        // Sprint 3: Held for review issues are hidden from general public feed until approved
+        if (issue.held_for_review && issue.raised_by !== currentUser.id) {
+          return false;
+        }
+
         // Search query
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();

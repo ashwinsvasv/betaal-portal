@@ -21,10 +21,19 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
+import { checkIssueContent } from '@/lib/moderation';
 
 export default function RaiseIssuePage() {
   const router = useRouter();
-  const { currentUser, roles, raiseIssue, issues, upvoteIssue, userVotes } = useSunwai();
+  const {
+    currentUser,
+    roles,
+    raiseIssue,
+    issues,
+    upvoteIssue,
+    userVotes,
+    abuseWords,
+  } = useSunwai();
 
   const [category, setCategory] = useState<IssueCategory>('Infra & IT');
   const [scope, setScope] = useState<IssueScope>('my hostel');
@@ -52,6 +61,11 @@ export default function RaiseIssuePage() {
     ];
     return sensitiveTerms.some((term) => text.includes(term));
   }, [title, details]);
+
+  // Sprint 3 Moderation analysis (A5)
+  const moderationResult = useMemo(() => {
+    return checkIssueContent(title, details, abuseWords);
+  }, [title, details, abuseWords]);
 
   // S11: Duplicate suggestions while typing title
   const similarIssues = useMemo(() => {
@@ -408,6 +422,36 @@ export default function RaiseIssuePage() {
                 className="w-full p-2.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
+            {/* Sprint 3 Moderation Notices (A5) */}
+            {moderationResult.hasAbuse && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Polite Discourse Reminder</span>
+                </div>
+                <p className="text-amber-800 leading-relaxed">
+                  Your text contains terms flagged by the campus moderation dictionary:{' '}
+                  <span className="font-mono font-bold bg-amber-200/80 text-amber-950 px-1.5 py-0.5 rounded">
+                    {moderationResult.abusiveWordsFound.join(', ')}
+                  </span>
+                  . Sunwai encourages polite, constructive discourse. We encourage you to rephrase to maintain a collaborative tone.
+                </p>
+              </div>
+            )}
+
+            {moderationResult.targetsNamedPerson && (
+              <div className="bg-blue-50 border border-blue-300 rounded-xl p-3.5 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                  <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Held in Admin Review Policy (A5)</span>
+                </div>
+                <p className="text-blue-800 leading-relaxed">
+                  Your complaint explicitly references an individual (<strong>{moderationResult.detectedName}</strong>).
+                  Under Sunwai policy, complaints naming individuals are held in the <strong>Admin Review Queue</strong> before public feed display to prevent unsubstantiated harassment while ensuring leadership review.
+                </p>
+              </div>
+            )}
 
             {/* Photo Attachments (Max 3) */}
             <div>

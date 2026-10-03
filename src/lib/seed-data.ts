@@ -593,3 +593,43 @@ export const SEED_OUTBOX: EmailOutboxItem[] = [
     created_at: hoursAgo(2),
   }
 ];
+
+export const SEED_AUDIT_LOG = [
+  {
+    id: 'audit-1',
+    actor_id: 'user-admin',
+    actor_name: 'Tech Admin',
+    action: 'USER_BULK_IMPORT',
+    target: 'users',
+    details: 'Initial cohort enrollment: 30 test students across PGP, ABM, and IPM registered.',
+    created_at: daysAgo(7),
+  },
+  {
+    id: 'audit-2',
+    actor_id: 'user-admin',
+    actor_name: 'Tech Admin',
+    action: 'ROLE_ASSIGNMENT',
+    target: 'roles/role-president',
+    details: 'Ashwin Narayan (PGP40001) designated as Student Council President.',
+    created_at: daysAgo(7),
+  },
+  {
+    id: 'audit-3',
+    actor_id: 'user-admin',
+    actor_name: 'Tech Admin',
+    action: 'ROLE_ASSIGNMENT',
+    target: 'roles/role-h3rep',
+    details: 'Vikramaditya Rao (PGP41030) appointed as Hostel Representative for Hostel 3.',
+    created_at: daysAgo(5),
+  },
+  {
+    id: 'audit-4',
+    actor_id: 'user-admin',
+    actor_name: 'Tech Admin',
+    action: 'COMMENT_REMOVED',
+    target: 'comments/comm-99',
+    details: 'Removed derogatory comment targeting mess contractor. Reason: Uncivil language.',
+    created_at: daysAgo(2),
+  },
+];
+

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
+import { parseRollNumber } from '@/lib/student-upload';
 
 /**
  * Links the Google session to a Sunwai user (once per sign-in) and sends brand-new
@@ -33,13 +34,15 @@ export function AuthSync() {
       setCurrentUser(existing);
       return;
     }
-    // First sign-in: create a student with an empty hostel; /signin asks for it.
+    // First sign-in: create a student; auto-extract course/batch if email username is a roll number
+    const username = email.split('@')[0].toUpperCase();
+    const parsed = parseRollNumber(username);
     const created = createUser({
-      roll_no: '',
-      name: session.user.name || email.split('@')[0],
+      roll_no: parsed.isValid ? username : '',
+      name: session.user.name || username,
       email,
-      course: '',
-      batch: '',
+      course: parsed.course || '',
+      batch: parsed.batch || '',
       hostel: '',
       is_active: true,
     });

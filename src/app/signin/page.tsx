@@ -26,6 +26,11 @@ export default function SignInPage() {
       .catch(() => setGoogleReady(false));
   }, []);
 
+  useEffect(() => {
+    if (currentUser.course && !course) setCourse(currentUser.course);
+    if (currentUser.batch && !batch) setBatch(currentUser.batch);
+  }, [currentUser, course, batch]);
+
   // Curate key demo accounts representing different user roles
   const demoProfiles = [
     {

@@ -26,10 +26,10 @@ export const roleMap: Record<string, string> = Object.fromEntries(
 const allowedEmails = [...list(process.env.SUNWAI_ALLOWED_EMAILS), ...Object.keys(roleMap)];
 
 export function isAllowedEmail(email: string): boolean {
-  const e = email.toLowerCase();
+  const e = email.toLowerCase().trim();
   if (allowedEmails.includes(e)) return true;
-  const domain = e.split('@')[1];
-  return Boolean(domain) && allowedDomains.includes(domain);
+  // Strictly enforce email ending with @iiml.ac.in (or subdomain.iiml.ac.in)
+  return e.endsWith('@iiml.ac.in') || e.endsWith('.iiml.ac.in');
 }
 
 export const googleConfigured = Boolean(

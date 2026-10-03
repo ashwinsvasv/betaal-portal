@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSunwai } from '@/lib/store';
 import { IssueRow } from '@/components/IssueRow';
 import { IssueCategory } from '@/types';
@@ -18,13 +19,21 @@ const CATEGORIES: ('All categories' | IssueCategory)[] = [
   'Other / not sure',
 ];
 
-export default function AllIssuesPage() {
+function AllIssuesContent() {
   const { issues, currentUser, getUserRole } = useSunwai();
+  const searchParams = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const urlSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
   const [selectedCategory, setSelectedCategory] = useState<'All categories' | IssueCategory>('All categories');
   const [statusFilter, setStatusFilter] = useState<'Open' | 'Resolved' | 'Everything'>('Open');
   const [sortFilter, setSortFilter] = useState<'Most votes' | 'Newest'>('Most votes');
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+    }
+  }, [urlSearch]);
 
   const currentUserRole = getUserRole(currentUser.id);
   const isPresident = currentUserRole?.name === 'President';
@@ -91,31 +100,46 @@ export default function AllIssuesPage() {
   return (
     <div className="space-y-6">
       {/* Title */}
-      <div>
-        <h1 className="text-[30px] font-serif text-[#16213e] leading-tight">
-          All issues
-        </h1>
-        <p className="text-[15px] text-[#5b6478] mt-1">
-          Every campus issue raised by students, its assigned council owner, and deadline.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-gray-200/60 pb-4">
+        <div>
+          <h1 className="text-[28px] sm:text-[30px] font-serif text-[#0f172a] font-bold leading-tight">
+            All issues
+          </h1>
+          <p className="text-[14px] sm:text-[15px] text-[#64748b] mt-0.5">
+            Every campus grievance, its assigned student council owner, and strict accountability SLA.
+          </p>
+        </div>
+        <div className="text-[12px] font-semibold text-[#64748b] bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-xs self-start">
+          {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'} found
+        </div>
       </div>
 
       {/* Controls Row: Search + Category + 2 Small Toggles */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Left: Search box & Category dropdown */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search issues..."
-            className="w-full sm:w-64 bg-white border border-[#dde2ea] text-[#16213e] placeholder-[#5b6478] text-[14px] px-3 py-2 rounded-[8px] transition-colors"
-          />
+          <div className="relative flex-1 sm:max-w-xs">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search issues, keywords..."
+              className="w-full bg-white border border-[#dde2ea] text-[#16213e] placeholder-[#94a3b8] text-[14px] pl-3 pr-8 py-2 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as any)}
-            className="bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3 py-2 rounded-[8px] transition-colors"
+            className="bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3 py-2 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
           >
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
@@ -126,18 +150,18 @@ export default function AllIssuesPage() {
         </div>
 
         {/* Right: Two Small Toggles */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Status Toggle: Open / Resolved / Everything */}
-          <div className="bg-[#eef1f6] p-1 rounded-[8px] flex items-center gap-1 text-[13px]">
+          <div className="bg-[#eef2f6] p-1 rounded-xl flex items-center gap-1 text-[13px] border border-gray-200/60">
             {(['Open', 'Resolved', 'Everything'] as const).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-[6px] transition-colors ${
+                className={`px-3 py-1 rounded-lg transition-all ${
                   statusFilter === s
-                    ? 'bg-white text-[#16213e] font-medium'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 {s}
@@ -146,16 +170,16 @@ export default function AllIssuesPage() {
           </div>
 
           {/* Sort Toggle: Most votes / Newest */}
-          <div className="bg-[#eef1f6] p-1 rounded-[8px] flex items-center gap-1 text-[13px]">
+          <div className="bg-[#eef2f6] p-1 rounded-xl flex items-center gap-1 text-[13px] border border-gray-200/60">
             {(['Most votes', 'Newest'] as const).map((sort) => (
               <button
                 key={sort}
                 type="button"
                 onClick={() => setSortFilter(sort)}
-                className={`px-3 py-1 rounded-[6px] transition-colors ${
+                className={`px-3 py-1 rounded-lg transition-all ${
                   sortFilter === sort
-                    ? 'bg-white text-[#16213e] font-medium'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 {sort}
@@ -166,10 +190,11 @@ export default function AllIssuesPage() {
       </div>
 
       {/* The Single White Panel containing the Issue List */}
-      <div className="bg-white rounded-[12px] border border-[#dde2ea] divide-y divide-[#dde2ea]">
+      <div className="bg-white rounded-2xl border border-gray-200/80 divide-y divide-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] overflow-hidden">
         {filteredIssues.length === 0 ? (
-          <div className="p-12 text-center text-[15px] text-[#5b6478]">
-            No issues match. Try fewer words, or raise it as a new issue.
+          <div className="p-16 text-center text-[15px] text-[#64748b]">
+            <p className="font-medium text-gray-700">No issues match your criteria.</p>
+            <p className="text-sm text-gray-400 mt-1">Try fewer words, clear filters, or raise it as a new issue.</p>
           </div>
         ) : (
           filteredIssues.map((issue) => (
@@ -178,5 +203,13 @@ export default function AllIssuesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AllIssuesPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-gray-400 text-sm">Loading issues...</div>}>
+      <AllIssuesContent />
+    </Suspense>
   );
 }

@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { SunwaiProvider } from '@/lib/store';
-import { Navbar } from '@/components/Navbar';
+import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Sunwai — Student Council Issue Portal | IIM Lucknow',
   description:
-    'Sunwai gives every student complaint at IIM Lucknow an owner, a deadline and a public status, so no issue can be silently ignored.',
+    'Every student complaint at IIM Lucknow has an owner and a deadline.',
 };
 
 export default function RootLayout({
@@ -16,21 +16,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
+      <body className="min-h-screen flex flex-col bg-[#f4f6f9] text-[#16213e] font-sans">
         <SunwaiProvider>
-          <Navbar />
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Header />
+          <main className="flex-1 max-w-[1000px] w-full mx-auto px-4 sm:px-6 py-8">
             {children}
           </main>
-          <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-800">Sunwai (सुनवाई)</span>
-                <span>— Student Council Issue Portal</span>
-              </div>
-              <div className="text-slate-400">
-                Indian Institute of Management Lucknow · Overtures Sprint 1 MVP
-              </div>
+          <footer className="border-t border-[#dde2ea] py-6 text-center text-[12px] text-[#5b6478] bg-white">
+            <div className="max-w-[1000px] mx-auto px-4 sm:px-6">
+              Complaints regarding harassment, ragging, or emergency safety should be reported directly to the Internal Complaints Committee (ICC) or Campus Security, not this portal.
             </div>
           </footer>
         </SunwaiProvider>

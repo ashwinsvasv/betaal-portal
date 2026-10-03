@@ -8,26 +8,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
+        page: '#f4f6f9',
+        panel: '#ffffff',
+        ink: '#16213e',
+        muted: '#5b6478',
+        line: '#dde2ea',
+        accent: {
+          DEFAULT: '#2f45c5',
+          soft: '#eaedfb',
         },
-        iiml: {
-          maroon: '#800000',
-          darkMaroon: '#5c0000',
-          gold: '#c5a059',
-          lightGold: '#f7eed7',
-          navy: '#1e293b'
-        }
+        warn: {
+          DEFAULT: '#9a5506',
+          soft: '#fff3dc',
+        },
+        danger: {
+          DEFAULT: '#b42318',
+          soft: '#fdecea',
+        },
+        success: {
+          DEFAULT: '#17734a',
+          soft: '#e6f4ec',
+        },
+      },
+      fontFamily: {
+        serif: ['Fraunces', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },

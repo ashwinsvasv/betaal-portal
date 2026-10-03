@@ -37,6 +37,32 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 > Sunwai is equipped with an integrated reactive state store with seed data for 30 students, 10 realistic issues, and council roles. It works out of the box with zero external configuration!
 > For cloud database integration, configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` and run `supabase/migrations/20261003_sprint1_schema.sql`.
 
+## 🧘 Calm, Uncluttered Architecture
+
+Sunwai is designed as a calm, focused application where every screen does exactly one job.
+
+### 1. The Single Accountability Line
+On every issue (in lists and on its own page), Sunwai renders one single coloured pill with an accountability dot saying who has the ball and how long they have:
+- **Raised, within 48h**: `Mess Secretary has 20h left to respond` (grey; amber if under 12h)
+- **Raised, past 48h**: `Mess Secretary is 6h late to respond` (red)
+- **Escalated**: `Escalated to the President, Mess Secretary missed the deadline` (red)
+- **Acknowledged**: `Mess Secretary acknowledged it` (blue)
+- **In progress**: `Mess Secretary is working on it, next update in 4 days` (blue; red if weekly update is late)
+- **Fixed**: `Marked fixed, the student has 6 days to confirm or reopen` (green)
+- **Resolved**: `Resolved in 5 days` (green)
+- **Rejected / Withdrawn**: grey
+
+*Rule:* This pill replaces separate status badges, deadline text, and progress bars. Status is never displayed twice.
+
+### 2. The 7 Focused Screens
+1. **Sign in (`/signin`)**: Headline statement on the left, Google sign-in button and 1-click demo account switcher on the right.
+2. **All issues (home `/`)**: Clean search box, category dropdown, two small toggles (`Open` / `Resolved` / `Everything`; `Most votes` / `Newest`), and one white panel list.
+3. **Raise an issue (`/raise`)**: 1 page, 2 steps (Form $\rightarrow$ "Check who this goes to" with direct send or President fallback).
+4. **Issue page (`/issue/[id]`)**: Title, accountability pill, details, photos, viewer-specific action panel, timeline, discussion, and narrow right sidebar (`Responsible`, `Status`, `Votes` only).
+5. **My issues (`/my-issues`)**: Reused issue row component, without vote buttons.
+6. **My inbox (`/inbox`)**: Reused issue row component with 3 tabs (`Needs action`, `Waiting on student`, `Done`).
+7. **Dashboard (`/dashboard`)**: 5 numbers in one row, "Run deadline check now" button, "Needs your attention" list, "By owner" table, and email log.
+
 ---
 
 ## 🧪 Sprint 3 Exit Tests: 2,000-Row Student Upload & Privacy Isolation

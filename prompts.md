@@ -150,3 +150,42 @@ Sprint 3 introduces administrative operations, institute data onboarding, modera
 | 8 | General Student Privacy Gate | Unrelated student attempts to view private issue $\rightarrow$ Access strictly blocked | Passed |
 | 9 | Named Individual Moderation | Issue mentioning "Devashish Roy" raised $\rightarrow$ Held in Admin Review Queue; approved by admin moves to public feed | Passed |
 | 10 | Comment Moderation | Admin removes inappropriate comment $\rightarrow$ Text replaced with `[Comment removed by admin: ...]` and logged to audit | Passed |
+
+---
+
+## 6. Simplification & Design Harmonization Trajectory
+
+### User Prompt:
+> "You are simplifying an existing student-council complaints portal for IIM Lucknow. The goal: a calm, uncluttered app where every screen does one job. Keep the existing tech stack, database and data. Do not add new features. Mostly you will be REMOVING and CONSOLIDATING..."
+
+### Architectural & Visual Design Decisions:
+1. **The Accountability Line (`<AccountabilityPill />`)**:
+   - Replaced redundant separate status badges, deadline text, and progress bars with a single coloured pill containing an accountability dot.
+   - States:
+     - Raised within 48h: `"Mess Secretary has 20h left to respond"` (grey, amber under 12h)
+     - Raised past 48h: `"Mess Secretary is 6h late to respond"` (red)
+     - Escalated: `"Escalated to the President, Mess Secretary missed the deadline"` (red)
+     - Acknowledged: `"Mess Secretary acknowledged it"` (blue)
+     - In progress: `"Mess Secretary is working on it, next update in 4 days"` (blue, red if weekly update late)
+     - Fixed: `"Marked fixed, the student has 6 days to confirm or reopen"` (green)
+     - Resolved: `"Resolved in 5 days"` (green)
+     - Rejected / Withdrawn: grey
+2. **Screen Consolidation (Strictly 7 Screens)**:
+   - **Sign in (`/signin`)**: Headline statement on left, Google button + 1-click demo personas on right.
+   - **All issues (`/`)**: Search box + category dropdown + 2 toggles (`Open` / `Resolved` / `Everything`; `Most votes` / `Newest`) + single white panel list.
+   - **Raise an issue (`/raise`)**: 1 page, 2 steps (Step 1 form, Step 2 owner confirmation with `"Send to <owner>"` and `"Not sure, send to the President"`).
+   - **Issue page (`/issue/[id]`)**: Title, accountability pill, details, photos, viewer-specific action panel, timeline, discussion, and narrow right sidebar (`Responsible`, `Status`, `Votes` only).
+   - **My issues (`/my-issues`)**: Reused `<IssueRow />` list without vote buttons.
+   - **My inbox (`/inbox`)**: Reused `<IssueRow />` list with 3 tabs (`Needs action`, `Waiting on student`, `Done`) and item counts.
+   - **Dashboard (`/dashboard` and `/president`)**: 5 numbers in one row, `"Run deadline check now"` button, `"Needs your attention"` list, `"By owner"` table, and email log.
+3. **Removed Elements**:
+   - Separate `/area-dashboard`, `/outbox`, and `/admin` routes consolidated/redirected.
+   - Removed modal drawers: `DeadlineControlModal`, `EmailOutboxModal`, `PersonaSwitcherModal`, `Navbar`.
+   - Removed duplicate status tags, icons beside every field, drop shadows, gradients, emojis, star ratings, likes, and avatars.
+4. **Design Tokens**:
+   - Page background: `#f4f6f9`
+   - Panels: `#ffffff` (rounded 12px, border `#dde2ea`, no shadows)
+   - Inputs/buttons: rounded 8px
+   - Typography: Fraunces (serif) for titles and big numbers; Inter for UI.
+   - Palette: Accent `#2f45c5`, soft `#eaedfb`, amber `#9a5506` on `#fff3dc`, red `#b42318` on `#fdecea`, green `#17734a` on `#e6f4ec`.
+   - One-line footer for ICC and campus security.

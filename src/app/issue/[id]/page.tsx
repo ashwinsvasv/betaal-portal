@@ -2,33 +2,9 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSunwai } from '@/lib/store';
-import { Timeline } from '@/components/Timeline';
-import { CommentSection } from '@/components/CommentSection';
-import { IssueSeverity } from '@/types';
-import {
-  ChevronUp,
-  Clock,
-  Building,
-  User as UserIcon,
-  ShieldCheck,
-  ShieldAlert,
-  Flame,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
-  Send,
-  XCircle,
-  FileCheck2,
-  ArrowRight,
-  Share2,
-  ArrowLeft,
-  X,
-  PlayCircle,
-  Sparkles,
-  Tag,
-} from 'lucide-react';
 import Link from 'next/link';
+import { useSunwai } from '@/lib/store';
+import { AccountabilityPill } from '@/components/AccountabilityPill';
 
 export default function IssueDetailPage() {
   const params = useParams();
@@ -46,701 +22,773 @@ export default function IssueDetailPage() {
     completeIssue,
     rejectIssue,
     redirectIssue,
-    setIssueSeverity,
     confirmResolution,
     reopenIssue,
     withdrawIssue,
     deleteIssue,
+    editIssue,
     getUserById,
     getRoleById,
     getUserRole,
     statusUpdates,
+    comments,
+    addComment,
     roles,
     canUserViewIssue,
   } = useSunwai();
 
   const issue = issues.find((i) => i.id === issueId);
 
-  // Modals / Action form states
-  const [activeModal, setActiveModal] = useState<
-    'none' | 'acknowledge' | 'in_progress' | 'update' | 'complete' | 'reject' | 'redirect' | 'reopen'
-  >('none');
-  const [actionNote, setActionNote] = useState('');
-  const [actionPhotoUrl, setActionPhotoUrl] = useState('');
-  const [rejectionReason, setRejectionReason] = useState('Duplicate request');
+  // Local Action Form States
+  const [noteText, setNoteText] = useState('');
+  const [proofPhoto, setProofPhoto] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('Duplicate issue');
   const [redirectRoleId, setRedirectRoleId] = useState('');
-  const [modalError, setModalError] = useState('');
-  const [notification, setNotification] = useState<string | null>(null);
+  const [reopenReasonText, setReopenReasonText] = useState('');
+  const [commentText, setCommentText] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+
+  // Raiser Edit Modal State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDetails, setEditDetails] = useState('');
 
   if (!issue) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-        <h2 className="text-xl font-bold text-slate-800">Issue Not Found</h2>
-        <p className="text-xs text-slate-500">The issue may have been removed or deleted.</p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold"
-        >
-          <ArrowLeft className="w-4 h-4" /> Return to Public Feed
+      <div className="bg-white rounded-[12px] border border-[#dde2ea] p-12 text-center space-y-3">
+        <h1 className="text-[20px] font-serif text-[#16213e]">Issue not found</h1>
+        <p className="text-[14px] text-[#5b6478]">This issue may have been removed or does not exist.</p>
+        <Link href="/" className="inline-block text-[14px] text-[#2f45c5] font-medium underline mt-2">
+          Return to all issues
         </Link>
       </div>
     );
   }
 
-  const currentUserRole = getUserRole(currentUser.id);
-  const isPresident = currentUserRole?.name === 'President';
-  const isOwner = currentUserRole?.id === issue.owner_role_id;
-  const isRaiser = issue.raised_by === currentUser.id;
-  const isAdmin = currentUser.email === 'techadmin@iiml.ac.in' || currentUserRole?.name.toLowerCase().includes('admin');
-
-  // Sprint 3 Privacy Isolation Rule Check:
-  // Can current user read this issue?
+  // Permission checks
   const canView = canUserViewIssue(currentUser, issue);
   if (!canView) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
-        <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
-          <ShieldAlert className="w-7 h-7" />
-        </div>
-        <h2 className="text-xl font-black text-slate-900">Access Restricted · Private Issue</h2>
-        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-          This issue is marked <strong>Private</strong>. In accordance with Sunwai privacy governance rules, private issues are accessible strictly to the student who raised it, the assigned council owner, and the President.
+      <div className="bg-white rounded-[12px] border border-[#dde2ea] p-10 max-w-[600px] mx-auto text-center space-y-3 my-8">
+        <h1 className="text-[20px] font-serif text-[#16213e]">Access restricted</h1>
+        <p className="text-[14px] text-[#5b6478]">
+          This issue is marked private. Private issues are confidential and visible only to the student who raised it, the assigned council owner, and the President.
         </p>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-500 leading-relaxed text-left space-y-1.5">
-          <div className="font-bold text-slate-700">Privacy Policy Enforcement:</div>
-          <div>• <strong>Technical Administrator:</strong> Cannot read private issues (Admin is an infrastructure role, not an elected student representative).</div>
-          <div>• <strong>General Students:</strong> Cannot view confidential issues raised by peers.</div>
-        </div>
-        <div className="pt-2">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Return to Public Feed
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Held for Review Gate:
-  // "Issues that target a named person are held in a review queue, visible only to the admin, the president, and the person who raised them, until reviewed."
-  if (issue.held_for_review && !isAdmin && !isPresident && !isRaiser) {
-    return (
-      <div className="bg-white rounded-2xl border border-amber-200 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
-        <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-          <AlertTriangle className="w-7 h-7" />
-        </div>
-        <h2 className="text-xl font-black text-slate-900">Issue Held for Moderation Review</h2>
-        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-          This issue is currently held in the <strong>Admin Review Queue</strong> because it references a named individual. Once reviewed and approved by an administrator or President, it will appear publicly.
-        </p>
-        <div className="pt-2">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Return to Public Feed
-          </Link>
-        </div>
+        <Link href="/" className="inline-block text-[14px] text-[#2f45c5] font-medium underline mt-2">
+          Return to all issues
+        </Link>
       </div>
     );
   }
 
   const raiser = getUserById(issue.raised_by);
   const ownerRole = getRoleById(issue.owner_role_id);
+  const currentUserRole = getUserRole(currentUser.id);
+
+  const isPresident = currentUserRole?.name === 'President';
+  const isOwner = currentUserRole?.id === issue.owner_role_id || isPresident;
+  const isRaiser = issue.raised_by === currentUser.id;
   const isVoted = userVotes.has(issue.id);
-  const isCouncilMember = Boolean(currentUserRole);
 
   const issueUpdates = statusUpdates.filter((u) => u.issue_id === issue.id);
+  const issueComments = comments.filter((c) => c.issue_id === issue.id);
 
-  // Public Identity Rule
+  // Public Identity Rule (Section 6)
   const canSeeFullIdentity = isOwner || isPresident || isRaiser;
   const authorDisplay = canSeeFullIdentity
-    ? `${raiser?.name || 'Student'} (${raiser?.roll_no || ''}, ${raiser?.hostel || ''})`
-    : `${raiser?.course || 'PGP'} Batch ${raiser?.batch || '41'} student`;
+    ? `${raiser?.name || 'Student'} (${raiser?.hostel || ''})`
+    : `a ${raiser?.course || 'PGP'} ${raiser?.batch || '42'} student`;
 
-  // Status Badge Styling
-  const getStatusBadge = () => {
-    switch (issue.status) {
-      case 'Raised':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'Acknowledged':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'In Progress':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-300';
-      case 'Completed':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'Escalated L1':
-      case 'Escalated L2':
-        return 'bg-rose-100 text-rose-800 border-rose-300 font-bold animate-pulse';
-      case 'Closed':
-        return 'bg-slate-100 text-slate-700 border-slate-300';
-      case 'Withdrawn':
-        return 'bg-zinc-100 text-zinc-500 border-zinc-200';
-      case 'Rejected':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-300';
+  const issueNum = issue.id.replace('issue-', '').slice(-4);
+  const scopeLabel = issue.scope === 'whole campus' ? 'Whole campus' : issue.hostel;
+
+  // Raiser edit/delete permissions (Section 4)
+  // Raiser, before any vote/acknowledgment: Edit / Delete in the sidebar. After that: Withdraw only.
+  const canEditOrDelete = isRaiser && issue.status === 'Raised' && issue.vote_count <= 1;
+  const canWithdraw = isRaiser && issue.status !== 'Closed' && issue.status !== 'Withdrawn' && !canEditOrDelete;
+
+  // Handlers
+  const handleAcknowledge = () => {
+    if (!noteText.trim()) {
+      setErrorMessage('Add a short note when acknowledging.');
+      return;
+    }
+    setErrorMessage('');
+    acknowledgeIssue(issue.id, noteText.trim());
+    setNoteText('');
+    setBannerMessage('Acknowledged. The student has been emailed your note.');
+  };
+
+  const handleStartWork = () => {
+    if (!noteText.trim()) {
+      setErrorMessage('Add a short note on what work is starting.');
+      return;
+    }
+    setErrorMessage('');
+    startWork(issue.id, noteText.trim());
+    setNoteText('');
+    setBannerMessage('Moved to in progress. The student has been notified.');
+  };
+
+  const handlePostUpdate = () => {
+    if (!noteText.trim()) {
+      setErrorMessage('Add a short note describing the latest progress.');
+      return;
+    }
+    setErrorMessage('');
+    postProgressUpdate(issue.id, noteText.trim(), proofPhoto.trim() || undefined);
+    setNoteText('');
+    setProofPhoto('');
+    setBannerMessage('Weekly update posted to timeline.');
+  };
+
+  const handleMarkFixed = () => {
+    if (!noteText.trim()) {
+      setErrorMessage('Add a note explaining how the issue was resolved.');
+      return;
+    }
+    setErrorMessage('');
+    completeIssue(issue.id, noteText.trim(), proofPhoto.trim() || undefined);
+    setNoteText('');
+    setProofPhoto('');
+    setBannerMessage('Marked fixed. The student has 7 days to confirm resolution or reopen.');
+  };
+
+  const handleReject = () => {
+    if (!noteText.trim()) {
+      setErrorMessage('Add a note explaining the reason for rejection.');
+      return;
+    }
+    setErrorMessage('');
+    rejectIssue(issue.id, rejectionReason, noteText.trim());
+    setNoteText('');
+    setBannerMessage('Issue rejected with reason.');
+  };
+
+  const handleRedirect = () => {
+    if (!redirectRoleId) {
+      setErrorMessage('Select the council role to redirect this issue to.');
+      return;
+    }
+    if (!noteText.trim()) {
+      setErrorMessage('Add a note explaining why this belongs to another role.');
+      return;
+    }
+    setErrorMessage('');
+    const res = redirectIssue(issue.id, redirectRoleId, noteText.trim());
+    setNoteText('');
+    setBannerMessage(res.message);
+  };
+
+  const handleConfirmFixed = () => {
+    confirmResolution(issue.id);
+    setBannerMessage('Resolution confirmed. This issue is now resolved.');
+  };
+
+  const handleReopen = () => {
+    if (!reopenReasonText.trim()) {
+      setErrorMessage('Add a note explaining why the fix was incomplete.');
+      return;
+    }
+    setErrorMessage('');
+    reopenIssue(issue.id, reopenReasonText.trim());
+    setReopenReasonText('');
+    setBannerMessage('Issue reopened and returned to in progress.');
+  };
+
+  const handleWithdraw = () => {
+    if (confirm('Withdraw this issue? It will be marked withdrawn and closed.')) {
+      withdrawIssue(issue.id);
+      setBannerMessage('Issue withdrawn.');
     }
   };
 
-  const handleActionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setModalError('');
-
-    if (activeModal === 'acknowledge') {
-      if (!actionNote.trim()) {
-        setModalError('Please enter an acknowledgment note to the student.');
-        return;
-      }
-      acknowledgeIssue(issue.id, actionNote.trim());
-      setNotification('Issue acknowledged. 48-hour SLA deadline cleared.');
-    } else if (activeModal === 'in_progress') {
-      if (!actionNote.trim()) {
-        setModalError('Please describe the immediate next action being taken.');
-        return;
-      }
-      startWork(issue.id, actionNote.trim());
-      setNotification('Issue moved to In Progress. Weekly update schedule activated.');
-    } else if (activeModal === 'update') {
-      if (!actionNote.trim()) {
-        setModalError('Please write an update note on progress.');
-        return;
-      }
-      postProgressUpdate(issue.id, actionNote.trim(), actionPhotoUrl.trim() || undefined);
-      setNotification('Weekly progress update recorded to timeline.');
-    } else if (activeModal === 'complete') {
-      if (!actionNote.trim()) {
-        setModalError('Resolution details and proof description are required.');
-        return;
-      }
-      completeIssue(issue.id, actionNote.trim(), actionPhotoUrl.trim() || undefined);
-      setNotification('Issue marked Completed. 7-day student review window opened.');
-    } else if (activeModal === 'reject') {
-      if (!actionNote.trim()) {
-        setModalError('Detailed justification for rejection is required.');
-        return;
-      }
-      rejectIssue(issue.id, rejectionReason, actionNote.trim());
-      setNotification('Issue rejected with formal justification.');
-    } else if (activeModal === 'redirect') {
-      if (!redirectRoleId) {
-        setModalError('Please select the target council role.');
-        return;
-      }
-      if (!actionNote.trim()) {
-        setModalError('Reason for redirect is required.');
-        return;
-      }
-      const res = redirectIssue(issue.id, redirectRoleId, actionNote.trim());
-      setNotification(res.message);
-    } else if (activeModal === 'reopen') {
-      if (!actionNote.trim()) {
-        setModalError('Please state why the resolution was unsatisfactory.');
-        return;
-      }
-      reopenIssue(issue.id, actionNote.trim());
-      setNotification('Issue reopened by student and returned to In Progress.');
+  const handleDelete = () => {
+    if (confirm('Delete this issue permanently?')) {
+      deleteIssue(issue.id);
+      router.push('/');
     }
+  };
 
-    setActiveModal('none');
-    setActionNote('');
-    setActionPhotoUrl('');
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editDetails.trim()) return;
+    editIssue(issue.id, editTitle.trim(), editDetails.trim());
+    setIsEditing(false);
+    setBannerMessage('Issue updated.');
+  };
+
+  const handlePostComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    addComment(issue.id, commentText.trim());
+    setCommentText('');
+    setBannerMessage('Comment posted.');
   };
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <Link href="/" className="flex items-center gap-1 hover:text-emerald-700 font-semibold">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Public Feed
+      {/* Back link */}
+      <div>
+        <Link href="/" className="text-[13px] text-[#5b6478] hover:text-[#16213e] inline-flex items-center gap-1">
+          ← Back to all issues
         </Link>
-        <span className="font-mono">Issue #{issue.id.slice(-6)}</span>
       </div>
 
-      {notification && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{notification}</span>
-          </div>
-          <button onClick={() => setNotification(null)} className="text-emerald-700 hover:text-emerald-900 font-bold">
+      {/* Green Success Banner (Section 4) */}
+      {bannerMessage && (
+        <div className="bg-[#e6f4ec] border border-[#17734a] text-[#17734a] text-[14px] p-3.5 rounded-[8px] flex items-center justify-between">
+          <span>{bannerMessage}</span>
+          <button
+            type="button"
+            onClick={() => setBannerMessage(null)}
+            className="text-[#17734a] font-bold text-[12px] ml-4"
+          >
             ✕
           </button>
         </div>
       )}
 
-      {issue.held_for_review && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <div className="font-bold text-sm">Issue Held in Admin Review Queue</div>
-              <p className="text-xs text-amber-800">
-                {issue.held_reason || 'This issue references an individual and requires moderation review before appearing in public feeds.'}
-              </p>
-            </div>
-          </div>
-          {(isAdmin || isPresident) && (
-            <Link
-              href="/admin"
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
-            >
-              Review in Admin Portal →
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Main Issue Header Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
-        {/* Top Badges & Upvote */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-xs px-3 py-1 rounded-full font-bold border ${getStatusBadge()}`}>
-                {issue.status}
-              </span>
-
-              {/* Severity Flag Badge (C6) */}
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-bold border flex items-center gap-1 ${
-                  issue.severity === 'Critical'
-                    ? 'bg-rose-600 text-white border-rose-700 shadow-sm animate-pulse'
-                    : issue.severity === 'High'
-                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                    : 'bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-              >
-                {issue.severity === 'Critical' && <AlertTriangle className="w-3.5 h-3.5" />}
-                {issue.severity} Severity
-              </span>
-
+      {/* Main Two-Column Layout (Section 2 & 5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 items-start">
+        {/* Left: Main Content */}
+        <div className="space-y-8">
+          {/* Header Block: Meta, Title & Accountability Pill */}
+          <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 text-[12px] text-[#5b6478]">
+              <span className="font-mono">#{issueNum}</span>
+              <span>·</span>
+              <span>{issue.category}</span>
+              <span>·</span>
+              <span>{scopeLabel}</span>
+              {issue.visibility === 'private' && (
+                <span className="bg-[#eaedfb] text-[#2f45c5] px-2 py-0.5 rounded text-[11px] font-medium ml-1">
+                  Private
+                </span>
+              )}
               {issue.is_priority && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-rose-600 text-white flex items-center gap-1 shadow-sm">
-                  <Flame className="w-3.5 h-3.5 fill-white" /> Priority Issue (200+ votes)
+                <span className="bg-[#fdecea] text-[#b42318] px-2 py-0.5 rounded text-[11px] font-medium ml-1">
+                  Priority
                 </span>
               )}
-
-              {issue.is_reopened && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-amber-500 text-white">
-                  Reopened by Student
-                </span>
-              )}
-
-              {/* Redirect Counter (C5) */}
-              {issue.redirect_count > 0 && (
-                <span className="text-xs px-2.5 py-1 rounded-md bg-purple-100 text-purple-800 border border-purple-200 font-mono font-bold">
-                  Redirected ({issue.redirect_count}/2)
-                </span>
-              )}
-
-              <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium">
-                {issue.category}
-              </span>
-
-              <span className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 border border-slate-200 flex items-center gap-1 font-medium">
-                <Building className="w-3 h-3 text-slate-400" />
-                {issue.scope === 'whole campus' ? 'Whole Campus' : issue.hostel}
-              </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+            <h1 className="text-[26px] sm:text-[30px] font-serif text-[#16213e] leading-snug">
               {issue.title}
             </h1>
-          </div>
 
-          {/* Upvote Button */}
-          <button
-            onClick={() => upvoteIssue(issue.id)}
-            className={`flex flex-col items-center justify-center min-w-[3.5rem] h-16 rounded-xl border transition-all ${
-              isVoted
-                ? 'bg-emerald-600 border-emerald-600 text-white shadow-md'
-                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-emerald-400 hover:bg-emerald-50'
-            }`}
-          >
-            <ChevronUp className={`w-6 h-6 ${isVoted ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-xs font-bold font-mono">{issue.vote_count}</span>
-          </button>
-        </div>
-
-        {/* Issue Details Body */}
-        <p className="text-sm sm:text-base text-slate-700 whitespace-pre-line leading-relaxed border-t border-slate-100 pt-4">
-          {issue.details}
-        </p>
-
-        {/* Attached Photos */}
-        {issue.photos && issue.photos.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Attached Photographs ({issue.photos.length})
-            </h4>
-            <div className="flex flex-wrap gap-3">
-              {issue.photos.map((photo, i) => (
-                <a
-                  key={i}
-                  href={photo}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group relative block w-36 h-28 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:ring-2 hover:ring-emerald-500 transition-all"
-                >
-                  <img
-                    src={photo}
-                    alt={`Attachment ${i + 1}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                </a>
-              ))}
+            {/* Single Accountability Pill */}
+            <div>
+              <AccountabilityPill issue={issue} ownerRole={ownerRole} />
             </div>
-          </div>
-        )}
 
-        {/* Ownership & Metadata Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-          <div>
-            <span className="text-slate-400 block mb-0.5 font-medium">Assigned Owner:</span>
-            <div className="flex items-center gap-1.5 font-bold text-blue-900">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>{ownerRole?.name || 'Unassigned'}</span>
+            {/* Details */}
+            <div className="text-[15px] text-[#16213e] leading-relaxed whitespace-pre-line border-t border-[#dde2ea] pt-4">
+              {issue.details}
             </div>
-            <span className="text-[11px] text-slate-500 font-mono">{ownerRole?.inbox_email}</span>
-          </div>
 
-          <div>
-            <span className="text-slate-400 block mb-0.5 font-medium">Raised By:</span>
-            <div className="flex items-center gap-1.5 font-bold text-slate-800">
-              <UserIcon className="w-4 h-4 text-slate-400" />
-              <span>{authorDisplay}</span>
-            </div>
-            <span className="text-[11px] text-slate-400">
-              {new Date(issue.created_at).toLocaleDateString('en-IN', {
-                dateStyle: 'medium',
-              })}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-slate-400 block mb-0.5 font-medium">SLA Deadlines:</span>
-            <div className="flex items-center gap-1.5 font-bold text-slate-800">
-              <Clock className="w-4 h-4 text-amber-600" />
-              <span>
-                {issue.status === 'Raised'
-                  ? `Ack due: ${new Date(issue.ack_deadline).toLocaleTimeString('en-IN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`
-                  : issue.status === 'In Progress'
-                  ? 'Weekly update in 7d'
-                  : 'SLA Met'}
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400">
-              {issue.redirect_count > 0 ? `Redirect ${issue.redirect_count}/2` : 'Primary assignment'}
-            </span>
-          </div>
-        </div>
-
-        {/* C6 Severity Setter (for Cabinet Members & President) */}
-        {isCouncilMember && issue.status !== 'Closed' && issue.status !== 'Withdrawn' && (
-          <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Tag className="w-4 h-4 text-slate-600" />
-              <span className="font-semibold text-slate-700">Council Severity Override (C6):</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {(['Normal', 'High', 'Critical'] as IssueSeverity[]).map((sev) => (
-                <button
-                  key={sev}
-                  onClick={() => setIssueSeverity(issue.id, sev)}
-                  className={`px-3 py-1 rounded-md font-bold text-xs transition-all ${
-                    issue.severity === sev
-                      ? sev === 'Critical'
-                        ? 'bg-rose-600 text-white shadow-sm'
-                        : sev === 'High'
-                        ? 'bg-amber-600 text-white shadow-sm'
-                        : 'bg-slate-700 text-white shadow-sm'
-                      : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
-                  }`}
-                >
-                  {sev}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ACTION CONTROLS BAR: For Assigned Owner, President, and Student */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* OWNER ACTIONS (C1 to C5) */}
-            {(isOwner || isPresident) && issue.status !== 'Closed' && issue.status !== 'Withdrawn' && (
-              <>
-                {/* C2: Acknowledge */}
-                {(issue.status === 'Raised' || issue.status === 'Escalated L1') && (
-                  <button
-                    onClick={() => setActiveModal('acknowledge')}
-                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Acknowledge Issue
-                  </button>
-                )}
-
-                {/* C3: Move to In Progress */}
-                {issue.status === 'Acknowledged' && (
-                  <button
-                    onClick={() => setActiveModal('in_progress')}
-                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                  >
-                    <PlayCircle className="w-4 h-4" /> Start Work (In Progress)
-                  </button>
-                )}
-
-                {/* C3: Post Progress Update */}
-                {issue.status === 'In Progress' && (
-                  <button
-                    onClick={() => setActiveModal('update')}
-                    className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
-                  >
-                    <Clock className="w-4 h-4" /> Post Progress Update
-                  </button>
-                )}
-
-                {/* C4: Mark Completed */}
-                {issue.status === 'In Progress' && (
-                  <button
-                    onClick={() => setActiveModal('complete')}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                  >
-                    <FileCheck2 className="w-4 h-4" /> Close as Completed
-                  </button>
-                )}
-
-                {/* C4: Reject Issue */}
-                {issue.status !== 'Completed' && (
-                  <button
-                    onClick={() => setActiveModal('reject')}
-                    className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 rounded-lg text-xs font-medium border border-slate-200 transition-all"
-                  >
-                    Reject Issue
-                  </button>
-                )}
-
-                {/* C5: Redirect Issue (with 2-redirect check) */}
-                {issue.status !== 'Completed' && (
-                  <button
-                    onClick={() => setActiveModal('redirect')}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium border border-slate-200 transition-all"
-                  >
-                    Redirect ({issue.redirect_count}/2)
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* S9: STUDENT VERIFICATION ACTIONS (Confirm or Reopen) */}
-            {isRaiser && issue.status === 'Completed' && (
-              <div className="flex items-center gap-2 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
-                <span className="text-xs font-bold text-emerald-900">7-Day Resolution Review:</span>
-                <button
-                  onClick={() => confirmResolution(issue.id)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold flex items-center gap-1 shadow-sm"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Fix (Close)
-                </button>
-                <button
-                  onClick={() => setActiveModal('reopen')}
-                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-bold flex items-center gap-1 shadow-sm"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Reopen (Not Fixed)
-                </button>
+            {/* Photos (if attached) */}
+            {issue.photos && issue.photos.length > 0 && (
+              <div className="border-t border-[#dde2ea] pt-4">
+                <div className="text-[13px] font-medium text-[#5b6478] mb-2">Attached photos</div>
+                <div className="flex gap-3 flex-wrap">
+                  {issue.photos.map((p, idx) => (
+                    <a
+                      key={idx}
+                      href={p}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block w-24 h-24 rounded-[8px] overflow-hidden border border-[#dde2ea] hover:opacity-90 transition-opacity"
+                    >
+                      <img src={p} alt="Issue photo" className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
-
-            {/* S5: Delete or Withdraw for Raiser */}
-            {isRaiser && issue.status === 'Raised' && issue.vote_count <= 1 && (
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this issue?')) {
-                    deleteIssue(issue.id);
-                    router.push('/');
-                  }
-                }}
-                className="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 font-medium"
-              >
-                Delete Issue
-              </button>
-            )}
-
-            {isRaiser && (issue.vote_count > 1 || issue.status !== 'Raised') && issue.status !== 'Withdrawn' && issue.status !== 'Closed' && (
-              <button
-                onClick={() => {
-                  if (confirm('Withdraw this issue? It will remain visible in the archive as withdrawn.')) {
-                    withdrawIssue(issue.id);
-                  }
-                }}
-                className="px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 rounded-lg border border-zinc-200 font-medium"
-              >
-                Withdraw Issue
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Layout: Timeline & Comments */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Append-only Status Timeline */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" />
-              <span>Lifecycle Audit Trail</span>
-            </h2>
-            <span className="text-[11px] font-mono text-slate-400">Append-Only Log</span>
           </div>
 
-          <Timeline updates={issueUpdates} />
-        </div>
-
-        {/* Comment Thread */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <CommentSection issueId={issue.id} />
-        </div>
-      </div>
-
-      {/* POPUP ACTION MODAL */}
-      {activeModal !== 'none' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="font-bold text-slate-900 text-sm capitalize">
-                {activeModal.replace('_', ' ')}: {issue.title}
-              </h3>
-              <button onClick={() => setActiveModal('none')} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+          {/* Action Panel: Section 4 - Show ONLY what viewer can do right now */}
+          {errorMessage && (
+            <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3 rounded-[8px]">
+              {errorMessage}
             </div>
+          )}
 
-            <form onSubmit={handleActionSubmit} className="p-6 space-y-4">
-              {activeModal === 'reject' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Rejection Category:
-                  </label>
-                  <select
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    className="w-full p-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50"
-                  >
-                    <option value="Duplicate request">Duplicate request</option>
-                    <option value="Out of Student Council jurisdiction">
-                      Out of Student Council jurisdiction
-                    </option>
-                    <option value="Policy/Institute regulation constraint">
-                      Policy/Institute regulation constraint
-                    </option>
-                    <option value="Insufficient details provided">
-                      Insufficient details provided
-                    </option>
-                  </select>
-                </div>
-              )}
-
-              {/* Redirect Rule (C5): 2-redirect check warning */}
-              {activeModal === 'redirect' && (
-                <div className="space-y-2">
-                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-900">
-                    <span className="font-bold block mb-0.5">Redirect Rule (C5):</span>
-                    {issue.redirect_count === 0 && 'This will be Redirect #1 of 2. 48-hour clock will restart for new owner.'}
-                    {issue.redirect_count === 1 && '⚠️ Attention: This is the 2nd and FINAL direct redirect. Any subsequent redirect will automatically route to the President.'}
-                    {issue.redirect_count >= 2 && 'Notice: Maximum 2 redirects reached. This ticket will automatically route to the President for final determination.'}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Redirect to Role:
-                    </label>
-                    <select
-                      value={redirectRoleId}
-                      onChange={(e) => setRedirectRoleId(e.target.value)}
-                      className="w-full p-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50"
-                      disabled={issue.redirect_count >= 2}
-                    >
-                      <option value="">Select Target Council Role...</option>
-                      {roles
-                        .filter((r) => r.id !== issue.owner_role_id)
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name} ({r.inbox_email})
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
+          {/* 1. Owner Actions when Raised or Escalated */}
+          {isOwner && (issue.status === 'Raised' || issue.status.startsWith('Escalated')) && (
+            <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 space-y-4">
+              <h2 className="text-[18px] font-serif text-[#16213e]">Respond as {ownerRole?.name}</h2>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {activeModal === 'acknowledge'
-                    ? 'Acknowledgment Note (Visible to student & timeline):'
-                    : activeModal === 'complete'
-                    ? 'Resolution Details & Proof Description:'
-                    : activeModal === 'reject'
-                    ? 'Detailed Reason for Rejection:'
-                    : activeModal === 'redirect'
-                    ? 'Reason for Redirect:'
-                    : activeModal === 'reopen'
-                    ? 'Why is this issue still unresolved?:'
-                    : 'Progress Update Note:'}
+                <label className="block text-[13px] text-[#5b6478] mb-1">
+                  Note to student
                 </label>
                 <textarea
-                  rows={3}
-                  value={actionNote}
-                  onChange={(e) => setActionNote(e.target.value)}
-                  placeholder="Enter details..."
-                  className="w-full p-2.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  rows={2}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="e.g. Acknowledged. I am inspecting the Hostel 3 geysers with the maintenance team today."
+                  className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-3 rounded-[8px]"
                 />
               </div>
 
-              {(activeModal === 'complete' || activeModal === 'update') && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Proof Photo URL (Optional):
-                  </label>
-                  <input
-                    type="url"
-                    value={actionPhotoUrl}
-                    onChange={(e) => setActionPhotoUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full p-2 text-xs border border-slate-200 rounded-lg font-mono"
-                  />
-                </div>
-              )}
-
-              {modalError && (
-                <div className="text-xs text-rose-600 bg-rose-50 p-2.5 rounded border border-rose-200">
-                  {modalError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveModal('none')}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  onClick={handleAcknowledge}
+                  className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
                 >
-                  Cancel
+                  Acknowledge
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="text-[#b42318] hover:bg-[#fdecea] text-[13px] font-medium px-3 py-2 rounded-[8px] transition-colors"
+                >
+                  Reject with reason
+                </button>
+              </div>
+
+              {/* Collapsed Redirect */}
+              <details className="mt-3 text-[13px] text-[#5b6478] border-t border-[#dde2ea] pt-3">
+                <summary className="cursor-pointer font-medium hover:text-[#16213e]">
+                  Not yours? Redirect it
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <select
+                    value={redirectRoleId}
+                    onChange={(e) => setRedirectRoleId(e.target.value)}
+                    className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[13px] p-2 rounded-[8px]"
+                  >
+                    <option value="">Select target council role...</option>
+                    {roles
+                      .filter((r) => r.id !== issue.owner_role_id)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleRedirect}
+                    className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3 py-1.5 rounded-[8px]"
+                  >
+                    Confirm redirect
+                  </button>
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* 2. Owner Actions when Acknowledged */}
+          {isOwner && issue.status === 'Acknowledged' && (
+            <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 space-y-4">
+              <h2 className="text-[18px] font-serif text-[#16213e]">Update status as {ownerRole?.name}</h2>
+              <div>
+                <label className="block text-[13px] text-[#5b6478] mb-1">
+                  Note
+                </label>
+                <textarea
+                  rows={2}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Describe current status or resolution details..."
+                  className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-3 rounded-[8px]"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleStartWork}
+                  className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  Start work
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleMarkFixed}
+                  className="bg-[#17734a] hover:bg-[#125838] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  Mark fixed
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="text-[#b42318] hover:bg-[#fdecea] text-[13px] font-medium px-3 py-2 rounded-[8px] transition-colors"
+                >
+                  Reject with reason
+                </button>
+              </div>
+
+              <details className="mt-3 text-[13px] text-[#5b6478] border-t border-[#dde2ea] pt-3">
+                <summary className="cursor-pointer font-medium hover:text-[#16213e]">
+                  Not yours? Redirect it
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <select
+                    value={redirectRoleId}
+                    onChange={(e) => setRedirectRoleId(e.target.value)}
+                    className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[13px] p-2 rounded-[8px]"
+                  >
+                    <option value="">Select target council role...</option>
+                    {roles
+                      .filter((r) => r.id !== issue.owner_role_id)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleRedirect}
+                    className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3 py-1.5 rounded-[8px]"
+                  >
+                    Confirm redirect
+                  </button>
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* 3. Owner Actions when In Progress */}
+          {isOwner && issue.status === 'In Progress' && (
+            <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 space-y-4">
+              <h2 className="text-[18px] font-serif text-[#16213e]">Progress as {ownerRole?.name}</h2>
+              <div>
+                <label className="block text-[13px] text-[#5b6478] mb-1">
+                  Weekly progress update or fix notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Describe progress made this week, vendor updates, or resolution proof..."
+                  className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-3 rounded-[8px]"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handlePostUpdate}
+                  className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  Post weekly update
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleMarkFixed}
+                  className="bg-[#17734a] hover:bg-[#125838] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  Mark fixed
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="text-[#b42318] hover:bg-[#fdecea] text-[13px] font-medium px-3 py-2 rounded-[8px] transition-colors"
+                >
+                  Reject with reason
+                </button>
+              </div>
+
+              <details className="mt-3 text-[13px] text-[#5b6478] border-t border-[#dde2ea] pt-3">
+                <summary className="cursor-pointer font-medium hover:text-[#16213e]">
+                  Not yours? Redirect it
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <select
+                    value={redirectRoleId}
+                    onChange={(e) => setRedirectRoleId(e.target.value)}
+                    className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[13px] p-2 rounded-[8px]"
+                  >
+                    <option value="">Select target council role...</option>
+                    {roles
+                      .filter((r) => r.id !== issue.owner_role_id)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleRedirect}
+                    className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3 py-1.5 rounded-[8px]"
+                  >
+                    Confirm redirect
+                  </button>
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* 4. Student Who Raised It, Status Fixed (Section 4) */}
+          {isRaiser && issue.status === 'Completed' && (
+            <div className="bg-[#e6f4ec] rounded-[12px] border border-[#17734a] p-6 space-y-4">
+              <h2 className="text-[18px] font-serif text-[#16213e]">Is it actually fixed?</h2>
+              <p className="text-[14px] text-[#17734a]">
+                The council member marked this fixed. Please verify whether the issue is resolved on the ground.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleConfirmFixed}
+                  className="bg-[#17734a] hover:bg-[#125838] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  Yes, it's fixed
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReopenReasonText('Issue is still recurring.')}
+                  className="bg-white border border-[#dde2ea] text-[#b42318] text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+                >
+                  No, reopen it
+                </button>
+              </div>
+
+              {reopenReasonText && (
+                <div className="space-y-2 pt-2 border-t border-[#17734a]/20">
+                  <label className="block text-[13px] text-[#16213e] font-medium">
+                    Why was the fix incomplete?
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={reopenReasonText}
+                    onChange={(e) => setReopenReasonText(e.target.value)}
+                    className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-2.5 rounded-[8px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleReopen}
+                    className="bg-[#b42318] hover:bg-[#8f1b13] text-white text-[13px] font-medium px-3.5 py-1.5 rounded-[8px]"
+                  >
+                    Confirm reopening
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Timeline */}
+          <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 space-y-4">
+            <h2 className="text-[18px] font-serif text-[#16213e]">Timeline</h2>
+
+            {issueUpdates.length === 0 ? (
+              <div className="text-[14px] text-[#5b6478]">No updates recorded yet.</div>
+            ) : (
+              <div className="space-y-4 border-l border-[#dde2ea] pl-4 ml-1">
+                {issueUpdates.map((upd) => {
+                  const actor = getUserById(upd.actor_id);
+                  const actorRole = actor ? getUserRole(actor.id) : null;
+                  const actorName = actorRole ? actorRole.name : actor?.name || 'Council';
+
+                  return (
+                    <div key={upd.id} className="relative space-y-1">
+                      <div className="w-2 h-2 rounded-full bg-[#5b6478] absolute -left-[21px] top-1.5" />
+                      <div className="text-[13px] text-[#5b6478]">
+                        <span className="font-medium text-[#16213e]">{actorName}</span>
+                        <span> · </span>
+                        <span>{new Date(upd.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                      <p className="text-[14px] text-[#16213e]">{upd.note}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Discussion */}
+          <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 space-y-5">
+            <h2 className="text-[18px] font-serif text-[#16213e]">
+              Discussion ({issueComments.length})
+            </h2>
+
+            {/* Comment Form */}
+            <form onSubmit={handlePostComment} className="space-y-3">
+              <textarea
+                rows={2}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Add a constructive comment or update..."
+                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-3 rounded-[8px]"
+              />
+              <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm"
+                  disabled={!commentText.trim()}
+                  className="bg-[#2f45c5] hover:bg-[#2537a0] disabled:opacity-40 text-white text-[13px] font-medium px-4 py-2 rounded-[8px] transition-colors"
                 >
-                  Submit
+                  Post comment
                 </button>
               </div>
             </form>
+
+            {/* Comments List */}
+            {issueComments.length > 0 && (
+              <div className="divide-y divide-[#dde2ea] border-t border-[#dde2ea] pt-2">
+                {issueComments.map((c) => {
+                  const author = getUserById(c.author_id);
+                  const authorRole = author ? getUserRole(author.id) : null;
+                  const authorLabel = authorRole
+                    ? authorRole.name
+                    : `a ${author?.course || 'PGP'} ${author?.batch || '42'} student`;
+
+                  return (
+                    <div key={c.id} className="py-3.5 space-y-1 text-[14px]">
+                      <div className="flex items-center justify-between text-[12px] text-[#5b6478]">
+                        <span className="font-medium text-[#16213e]">{authorLabel}</span>
+                        <span>{new Date(c.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                      <p className="text-[#16213e] whitespace-pre-line leading-relaxed">{c.body}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Right: Narrow Sidebar (Responsible, Status, Votes only) */}
+        <aside className="space-y-6">
+          <div className="bg-white rounded-[12px] border border-[#dde2ea] p-5 space-y-5 text-[14px]">
+            {/* Responsible */}
+            <div>
+              <div className="text-[12px] text-[#5b6478] font-medium uppercase tracking-wider mb-1">
+                Responsible
+              </div>
+              <div className="font-semibold text-[#16213e]">
+                {ownerRole?.name || 'Unassigned'}
+              </div>
+              <div className="text-[12px] text-[#5b6478] mt-0.5">
+                {ownerRole?.inbox_email}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="border-t border-[#dde2ea] pt-4">
+              <div className="text-[12px] text-[#5b6478] font-medium uppercase tracking-wider mb-1">
+                Status
+              </div>
+              <div className="font-medium text-[#16213e]">
+                {issue.status}
+              </div>
+            </div>
+
+            {/* Votes */}
+            <div className="border-t border-[#dde2ea] pt-4">
+              <div className="text-[12px] text-[#5b6478] font-medium uppercase tracking-wider mb-2">
+                Votes
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => upvoteIssue(issue.id)}
+                  className={`px-3 py-1.5 rounded-[8px] border text-[13px] font-medium transition-colors flex items-center gap-1.5 ${
+                    isVoted
+                      ? 'bg-[#eaedfb] border-[#2f45c5] text-[#2f45c5]'
+                      : 'bg-white border-[#dde2ea] text-[#16213e] hover:border-[#2f45c5]'
+                  }`}
+                >
+                  <span>▲</span>
+                  <span>{issue.vote_count}</span>
+                  <span>{isVoted ? 'Voted' : 'Vote'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Raiser Edit / Delete or Withdraw */}
+            {canEditOrDelete && (
+              <div className="border-t border-[#dde2ea] pt-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setEditTitle(issue.title);
+                    setEditDetails(issue.details);
+                  }}
+                  className="w-full text-left text-[13px] text-[#2f45c5] font-medium hover:underline"
+                >
+                  Edit issue
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="w-full text-left text-[13px] text-[#b42318] font-medium hover:underline"
+                >
+                  Delete issue
+                </button>
+              </div>
+            )}
+
+            {canWithdraw && (
+              <div className="border-t border-[#dde2ea] pt-4">
+                <button
+                  type="button"
+                  onClick={handleWithdraw}
+                  className="w-full text-left text-[13px] text-[#5b6478] hover:text-[#b42318] font-medium"
+                >
+                  Withdraw issue
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* Edit Modal for Raiser */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleSaveEdit}
+            className="bg-white rounded-[12px] border border-[#dde2ea] p-6 max-w-md w-full space-y-4"
+          >
+            <h2 className="text-[18px] font-serif text-[#16213e]">Edit issue</h2>
+            <div>
+              <label className="block text-[13px] text-[#5b6478] mb-1">Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-2.5 rounded-[8px]"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] text-[#5b6478] mb-1">Details</label>
+              <textarea
+                rows={4}
+                value={editDetails}
+                onChange={(e) => setEditDetails(e.target.value)}
+                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] p-2.5 rounded-[8px]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="px-3 py-1.5 text-[13px] text-[#5b6478] hover:text-[#16213e]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="bg-[#2f45c5] text-white text-[13px] font-medium px-4 py-1.5 rounded-[8px]"
+              >
+                Save changes
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -332,6 +332,38 @@ export default function DashboardPage() {
           </summary>
           <div className="mt-3 p-5 bg-white rounded-[12px] border border-[#dde2ea] space-y-4">
             <div>
+              <h3 className="text-[14px] font-medium text-[#16213e] mb-1">Live email</h3>
+              <p className="text-[#5b6478] text-[13px] mb-3">
+                Sends one real message to ashwinsvasv+president@gmail.com. If SMTP is not configured, the send is only logged on the server.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await fetch('/api/email/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      recipient: 'ashwinsvasv+president@gmail.com',
+                      subject: '[Sunwai] Test email',
+                      body: 'This is a test message from the Sunwai dashboard.',
+                    }),
+                  });
+                  const data = await res.json();
+                  setCronNotice(
+                    data.ok
+                      ? data.mode === 'live'
+                        ? `Test email sent to ${data.to}.`
+                        : 'Email sending is not switched on. Set EMAIL_LIVE=true and SMTP_PASS in .env.local.'
+                      : `Test email failed: ${data.error}`
+                  );
+                }}
+                className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3.5 py-1.5 rounded-[8px] transition-colors"
+              >
+                Send test email
+              </button>
+            </div>
+
+            <div className="border-t border-[#dde2ea] pt-3">
               <h3 className="text-[14px] font-medium text-[#16213e] mb-1">
                 500-User Concurrent Load Test (Sprint 4 Exit Test)
               </h3>

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
 
 export function Header() {
@@ -75,13 +76,13 @@ export function Header() {
             <span className="text-[#5b6478]">{roleDisplay}</span>
           </div>
 
-          <Link
-            href="/signin"
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: '/signin' })}
             className="text-[13px] text-[#5b6478] hover:text-[#16213e] transition-colors border-l border-[#dde2ea] pl-3"
-            title="Switch account or sign out"
           >
             Sign out
-          </Link>
+          </button>
         </div>
       </div>
     </header>

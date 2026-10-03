@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   User,
   CouncilRole,
@@ -28,7 +28,7 @@ import {
 } from '@/lib/seed-data';
 import { determineSuggestedOwner } from '@/lib/routing';
 import { runComprehensiveDeadlineCheck, generateDailyDigests } from '@/lib/deadline-checker';
-import { createEmailItem, EmailTemplates } from '@/lib/email-service';
+import { createEmailItem, dispatchEmail, EmailTemplates } from '@/lib/email-service';
 import { DEFAULT_ABUSE_WORDS, checkIssueContent } from '@/lib/moderation';
 import { LoadTestResult, execute500UserLoadTest } from '@/lib/load-test';
 
@@ -123,9 +123,10 @@ interface SunwaiContextType {
 
 const SunwaiContext = createContext<SunwaiContextType | null>(null);
 
-const STORAGE_KEY = 'sunwai_state_v3';
+const STORAGE_KEY = 'sunwai_state_v4';
 
 export function SunwaiProvider({ children }: { children: React.ReactNode }) {
+  const dispatchedEmailIds = useRef(new Set<string>());
   const [currentUser, setCurrentUserState] = useState<User>(SEED_USERS[11]); // Default to Rahul Sharma (PGP student)
   const [users, setUsers] = useState<User[]>(SEED_USERS);
   const [roles, setRoles] = useState<CouncilRole[]>(SEED_ROLES);
@@ -206,6 +207,26 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     lastCronReport,
     simulatedClockOffsetHours,
   ]);
+
+  // Send any pending outbox items through the server mailer (live SMTP or simulated).
+  useEffect(() => {
+    outbox
+      .filter((item) => item.status === 'pending' && !dispatchedEmailIds.current.has(item.id))
+      .forEach((item) => {
+        dispatchedEmailIds.current.add(item.id);
+        dispatchEmail(item).then((res) => {
+          setOutbox((prev) =>
+            prev.map((i) =>
+              i.id === item.id
+                ? res.ok
+                  ? { ...i, status: 'sent', delivery_mode: res.mode, sent_at: new Date().toISOString(), error_message: undefined }
+                  : { ...i, status: 'failed', error_message: res.error }
+                : i
+            )
+          );
+        });
+      });
+  }, [outbox]);
 
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
@@ -1133,25 +1154,18 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   };
 
   const retryFailedEmails = (): number => {
-    let retriedCount = 0;
+    const failed = outbox.filter((item) => item.status === 'failed');
+    if (failed.length === 0) return 0;
+    const ids = new Set(failed.map((f) => f.id));
+    ids.forEach((id) => dispatchedEmailIds.current.delete(id));
     setOutbox((prev) =>
-      prev.map((item) => {
-        if (item.status === 'failed') {
-          retriedCount++;
-          const nextAttempts = item.attempts + 1;
-          const isSuccess = nextAttempts >= 2;
-          return {
-            ...item,
-            attempts: nextAttempts,
-            status: isSuccess ? 'sent' : 'failed',
-            sent_at: isSuccess ? new Date().toISOString() : undefined,
-            error_message: isSuccess ? undefined : 'Connection retry failed',
-          };
-        }
-        return item;
-      })
+      prev.map((item) =>
+        ids.has(item.id)
+          ? { ...item, status: 'pending', attempts: item.attempts + 1, error_message: undefined }
+          : item
+      )
     );
-    return retriedCount;
+    return failed.length;
   };
 
   // Sprint 3 Row-Level Security / Privacy Rule Checker

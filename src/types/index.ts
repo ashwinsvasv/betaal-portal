@@ -144,6 +144,7 @@ export interface EmailOutboxItem {
   body: string;
   issue_id?: string;
   status: 'sent' | 'pending' | 'failed';
+  delivery_mode?: 'live' | 'simulated';
   attempts: number;
   error_message?: string;
   sent_at?: string;

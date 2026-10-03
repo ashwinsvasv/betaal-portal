@@ -38,7 +38,7 @@ export function runComprehensiveDeadlineCheck(
     const ownerRole = ctx.roles.find((r) => r.id === issue.owner_role_id) || {
       id: issue.owner_role_id,
       name: 'Owner Role',
-      inbox_email: 'council@iiml.ac.in',
+      inbox_email: 'ashwinsvasv+council@gmail.com',
       holder_user_id: '',
     };
 

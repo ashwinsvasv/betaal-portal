@@ -20,12 +20,37 @@ export function createEmailItem(payload: EmailPayload): EmailOutboxItem {
     subject: payload.subject,
     body: payload.body,
     issue_id: payload.issue_id,
-    status: isFailed ? 'failed' : 'sent',
+    // New items start as 'pending'; the store's dispatcher sends them via /api/email/send.
+    status: isFailed ? 'failed' : 'pending',
     attempts: 1,
     error_message: isFailed ? 'SMTP Connection Timeout (Simulated Gateway Error)' : undefined,
-    sent_at: isFailed ? undefined : now,
+    sent_at: undefined,
     created_at: now,
   };
+}
+
+/** Deliver one outbox item through the server mailer. Never throws. */
+export async function dispatchEmail(
+  item: EmailOutboxItem
+): Promise<{ ok: boolean; mode?: 'live' | 'simulated'; error?: string }> {
+  try {
+    const res = await fetch('/api/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: item.recipient,
+        subject: item.subject,
+        body: item.body,
+        template: item.template,
+      }),
+    });
+    const data = await res.json();
+    return res.ok && data.ok
+      ? { ok: true, mode: data.mode }
+      : { ok: false, error: data.error || `Mail server returned ${res.status}.` };
+  } catch {
+    return { ok: false, error: 'Could not reach the mail server. Retry from the dashboard.' };
+  }
 }
 
 // Formatters for each notification required by the spec
@@ -55,7 +80,7 @@ export const EmailTemplates = {
   }),
 
   escalationL1: (issue: Issue, ownerRole: CouncilRole, elapsedHours: number) => ({
-    recipient: 'president@iiml.ac.in',
+    recipient: 'ashwinsvasv+president@gmail.com',
     template: 'escalation_l1',
     subject: `[Sunwai Escalation L1] SLA Breached by ${ownerRole.name}: ${issue.title}`,
     body: `To: Student Council President\nCc: ${ownerRole.inbox_email}\n\nIssue "${issue.title}" was not acknowledged within the mandatory 48-hour window by ${ownerRole.name}.\n\nTime Waited: ${elapsedHours} hours\nStatus: Escalated L1\nCategory: ${issue.category}\nHostel: ${issue.hostel}\nVotes: ${issue.vote_count}\n\nAs President, you are required to either take direct ownership or reassign this ticket with an expedited timeline:\nhttps://sunwai.iiml.ac.in/president`,
@@ -63,10 +88,10 @@ export const EmailTemplates = {
   }),
 
   escalationL2: (issue: Issue, elapsedTotalHours: number) => ({
-    recipient: 'studentaffairs@iiml.ac.in',
+    recipient: 'ashwinsvasv+studentaffairs@gmail.com',
     template: 'escalation_l2',
     subject: `[Sunwai Escalation L2] Unresolved Council Escalation: ${issue.title}`,
-    body: `To: Dean / Office of Student Affairs, IIM Lucknow\nCc: president@iiml.ac.in\n\nIssue "${issue.title}" has breached both primary council response windows (over ${elapsedTotalHours} hours unaddressed).\n\nTimeline:\n- 48h primary owner acknowledgment deadline missed.\n- 48h President Level 1 escalation intervention missed.\n\nFull Ticket Dossier:\nhttps://sunwai.iiml.ac.in/issue/${issue.id}`,
+    body: `To: Dean / Office of Student Affairs, IIM Lucknow\nCc: ashwinsvasv+president@gmail.com\n\nIssue "${issue.title}" has breached both primary council response windows (over ${elapsedTotalHours} hours unaddressed).\n\nTimeline:\n- 48h primary owner acknowledgment deadline missed.\n- 48h President Level 1 escalation intervention missed.\n\nFull Ticket Dossier:\nhttps://sunwai.iiml.ac.in/issue/${issue.id}`,
     issue_id: issue.id,
   }),
 
@@ -74,12 +99,12 @@ export const EmailTemplates = {
     recipient: ownerRole.inbox_email,
     template: 'priority_threshold',
     subject: `[Sunwai Priority Threshold] 200+ Votes Crossed: ${issue.title}`,
-    body: `Hello ${ownerRole.name},\nCc: president@iiml.ac.in\n\nIssue "${issue.title}" has officially crossed 200 votes (10% campus threshold).\n\nCouncil Charter Rule:\nThe owner must post an official public response or action plan within 7 days.\nResponse Deadline: ${new Date(issue.priority_response_deadline || new Date(Date.now() + 7 * 86400 * 1000).toISOString()).toLocaleString('en-IN')}`,
+    body: `Hello ${ownerRole.name},\nCc: ashwinsvasv+president@gmail.com\n\nIssue "${issue.title}" has officially crossed 200 votes (10% campus threshold).\n\nCouncil Charter Rule:\nThe owner must post an official public response or action plan within 7 days.\nResponse Deadline: ${new Date(issue.priority_response_deadline || new Date(Date.now() + 7 * 86400 * 1000).toISOString()).toLocaleString('en-IN')}`,
     issue_id: issue.id,
   }),
 
   priorityDeadlineBreached: (issue: Issue, ownerRole: CouncilRole) => ({
-    recipient: 'president@iiml.ac.in',
+    recipient: 'ashwinsvasv+president@gmail.com',
     template: 'priority_deadline_breach',
     subject: `[Sunwai Escalation L1] Priority Issue Response Missed by ${ownerRole.name}: ${issue.title}`,
     body: `To: Student Council President\n\nPriority issue "${issue.title}" (Votes: ${issue.vote_count}) did not receive the required 7-day public response from ${ownerRole.name}.\n\nIt has been automatically elevated to Level 1 on your executive dashboard.`,
@@ -95,7 +120,7 @@ export const EmailTemplates = {
   }),
 
   weeklyUpdateEscalation: (issue: Issue, ownerRole: CouncilRole) => ({
-    recipient: 'president@iiml.ac.in',
+    recipient: 'ashwinsvasv+president@gmail.com',
     template: 'weekly_update_escalation',
     subject: `[Sunwai Escalation L1] Progress Stalled for 10 Days: ${issue.title}`,
     body: `To: Student Council President\n\nIssue "${issue.title}" owned by ${ownerRole.name} has not received an update for 10 days despite reminders. Escalated to President for intervention.`,

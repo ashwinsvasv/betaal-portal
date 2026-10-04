@@ -27,6 +27,19 @@ export async function POST(request: Request) {
 
     const userId = session?.user?.sunwaiUserId || 'user-student-1';
 
+    // Fetch user and issue details for eligibility verification
+    const [userRes, issueRes] = await Promise.all([
+      supabaseAdmin.from('users').select('*').eq('id', userId).single(),
+      supabaseAdmin.from('issues').select('*').eq('id', issue_id).single(),
+    ]);
+
+    const voter = userRes.data;
+    const issue = issueRes.data;
+
+    if (!issue) {
+      return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+    }
+
     // Check if vote already exists
     const { data: existingVote } = await supabaseAdmin
       .from('votes')
@@ -44,6 +57,27 @@ export async function POST(request: Request) {
         .eq('user_id', userId);
       return NextResponse.json({ status: 'unvoted' });
     } else {
+      // Verify scope eligibility before adding vote
+      if (voter) {
+        if ((issue.scope === 'my hostel' || issue.scope === 'my room') && issue.hostel) {
+          if (voter.hostel && issue.hostel.toLowerCase() !== voter.hostel.toLowerCase()) {
+            return NextResponse.json(
+              { error: `Voting restricted to ${issue.hostel} residents.` },
+              { status: 403 }
+            );
+          }
+        }
+
+        if (issue.scope === 'my section' && issue.section) {
+          if (voter.section && issue.section.toLowerCase() !== voter.section.toLowerCase()) {
+            return NextResponse.json(
+              { error: `Voting restricted to ${issue.section} students.` },
+              { status: 403 }
+            );
+          }
+        }
+      }
+
       // Add vote
       await supabaseAdmin
         .from('votes')

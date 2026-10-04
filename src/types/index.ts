@@ -17,7 +17,7 @@ export type IssueCategory =
   | 'Finance and reimbursements' 
   | 'Other / not sure';
 
-export type IssueScope = 'my room' | 'my hostel' | 'whole campus';
+export type IssueScope = 'my room' | 'my hostel' | 'my section' | 'whole campus';
 
 export type IssueVisibility = 'public' | 'private';
 
@@ -42,6 +42,7 @@ export interface User {
   course: string;
   batch: string;
   hostel: string;
+  section?: string; // e.g. 'Section A'
   is_active: boolean;
   avatar_url?: string;
   created_at?: string;
@@ -84,6 +85,7 @@ export interface Issue {
   category: IssueCategory;
   scope: IssueScope;
   hostel: string;
+  section?: string; // Section associated with this issue if scoped to section/academics
   visibility: IssueVisibility;
   status: IssueStatus;
   severity: IssueSeverity;
@@ -192,6 +194,7 @@ export interface StudentUploadRow {
   name: string;
   email: string;
   hostel: string;
+  section?: string;
   course: string;
   batch: string;
   isValid?: boolean;

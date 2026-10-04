@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
-import { ALL_HOSTELS } from '@/lib/constants';
+import { ALL_HOSTELS, ALL_SECTIONS } from '@/lib/constants';
 
 type DemoCategory = 'council' | 'hostel_reps' | 'class_reps' | 'students';
 
@@ -18,6 +18,7 @@ export default function SignInPage() {
 
   const [googleReady, setGoogleReady] = useState<boolean | null>(null);
   const [hostel, setHostel] = useState('');
+  const [section, setSection] = useState('Section A');
   const [profileError, setProfileError] = useState('');
 
   // Demo Login Directory Tab & Search
@@ -41,20 +42,22 @@ export default function SignInPage() {
     }
   };
 
-  const needsProfile = status === 'authenticated' && currentUser && currentUser.hostel === '';
+  const needsProfile = status === 'authenticated' && currentUser && (!currentUser.hostel || !currentUser.section);
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hostel) return setProfileError('Pick your hostel.');
+    if (!section) return setProfileError('Pick your section.');
     if (!currentUser) return;
 
     const updated = {
       ...currentUser,
       hostel,
+      section,
       course: currentUser.course || 'PGP',
       batch: currentUser.batch || '42',
     };
-    updateUser(currentUser.id, { hostel, course: updated.course, batch: updated.batch });
+    updateUser(currentUser.id, { hostel, section, course: updated.course, batch: updated.batch });
     setCurrentUser(updated);
     router.push('/');
   };
@@ -181,23 +184,42 @@ export default function SignInPage() {
             </div>
           )}
 
-          {/* Only Single Required Input: Hostel */}
-          <div>
-            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
-              Hostel (1 to 17)
-            </label>
-            <select
-              value={hostel}
-              onChange={(e) => setHostel(e.target.value)}
-              className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#2563eb]"
-            >
-              <option value="">Choose your hostel</option>
-              {ALL_HOSTELS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
+          {/* Required Inputs: Hostel & Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+                Hostel (1 to 17)
+              </label>
+              <select
+                value={hostel}
+                onChange={(e) => setHostel(e.target.value)}
+                className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#2563eb]"
+              >
+                <option value="">Choose your hostel</option>
+                {ALL_HOSTELS.map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+                Academic Section
+              </label>
+              <select
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#2563eb]"
+              >
+                {ALL_SECTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <button

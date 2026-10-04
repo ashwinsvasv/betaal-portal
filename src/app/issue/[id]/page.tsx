@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useSunwai } from '@/lib/store';
 import { AccountabilityPill } from '@/components/AccountabilityPill';
 import { CategoryBadge } from '@/lib/category-config';
+import { checkVoteEligibility } from '@/lib/vote-eligibility';
 import {
   ArrowLeft,
   ChevronUp,
@@ -138,6 +139,7 @@ export default function IssueDetailPage() {
   const isOwner = currentUser ? (currentUserRole?.id === issue.owner_role_id || isPresident) : false;
   const isRaiser = currentUser ? issue.raised_by === currentUser.id : false;
   const isVoted = userVotes.has(issue.id);
+  const voteEligibility = checkVoteEligibility(currentUser, issue, raiser);
 
   const issueUpdates = statusUpdates.filter((u) => u.issue_id === issue.id);
   const issueComments = comments.filter((c) => c.issue_id === issue.id);
@@ -735,23 +737,47 @@ export default function IssueDetailPage() {
 
             {/* Votes */}
             <div className="border-t border-slate-100 pt-4 space-y-2">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-                Student Votes
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                  Student Votes
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded">
+                  {voteEligibility.scopeLabel}
+                </span>
               </div>
               <button
                 type="button"
-                onClick={() => upvoteIssue(issue.id)}
-                className={`w-full py-2 rounded-xl border text-[13px] font-semibold transition-all flex items-center justify-center gap-2 ${
+                disabled={!voteEligibility.canVote && !isVoted}
+                onClick={() => {
+                  if (voteEligibility.canVote || isVoted) {
+                    upvoteIssue(issue.id);
+                  }
+                }}
+                className={`w-full py-2.5 rounded-xl border text-[13px] font-semibold transition-all flex items-center justify-center gap-2 ${
                   isVoted
                     ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                    : !voteEligibility.canVote
+                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
                     : 'bg-white border-slate-200 text-slate-700 hover:border-blue-600 hover:text-blue-600'
                 }`}
+                title={!voteEligibility.canVote && !isVoted ? voteEligibility.reason : undefined}
               >
                 <ChevronUp className="w-4 h-4" />
                 <span>{issue.vote_count} {issue.vote_count === 1 ? 'Vote' : 'Votes'}</span>
                 <span>·</span>
-                <span>{isVoted ? 'Voted' : 'Upvote'}</span>
+                <span>
+                  {isVoted
+                    ? 'Voted'
+                    : !voteEligibility.canVote
+                    ? 'Ineligible'
+                    : 'Upvote'}
+                </span>
               </button>
+              {!voteEligibility.canVote && !isVoted && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/70 p-2 rounded-lg leading-relaxed">
+                  {voteEligibility.reason}
+                </p>
+              )}
             </div>
 
             {/* Raiser Edit / Delete or Withdraw */}

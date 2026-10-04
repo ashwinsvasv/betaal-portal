@@ -7,6 +7,7 @@ import { Issue } from '@/types';
 import { useSunwai } from '@/lib/store';
 import { AccountabilityPill } from './AccountabilityPill';
 import { CategoryBadge } from '@/lib/category-config';
+import { checkVoteEligibility } from '@/lib/vote-eligibility';
 import {
   ChevronUp,
   Building2,
@@ -89,23 +90,36 @@ export function IssueRow({ issue, showVote = true }: Props) {
   const stepLevel = getStepProgress();
   const isResolved = issue.status === 'Completed' || issue.status === 'Closed';
 
+  const voteEligibility = checkVoteEligibility(currentUser, issue, raiser);
+
   return (
     <div className="p-4 sm:p-5 flex items-start gap-3.5 sm:gap-4.5 hover:bg-slate-50/70 transition-all duration-150 border-b border-gray-100 last:border-b-0 group">
       {/* Left: Vote Box (only if showVote is true) */}
       {showVote && (
         <button
           type="button"
+          disabled={!voteEligibility.canVote && !isVoted}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            upvoteIssue(issue.id);
+            if (voteEligibility.canVote || isVoted) {
+              upvoteIssue(issue.id);
+            }
           }}
           className={`shrink-0 w-11 sm:w-12 h-13 rounded-xl border flex flex-col items-center justify-center transition-all ${
             isVoted
               ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-600/20'
+              : !voteEligibility.canVote
+              ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
               : 'bg-white border-slate-200 text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/30'
           }`}
-          title={isVoted ? 'Remove vote' : 'Vote for this issue'}
+          title={
+            isVoted
+              ? 'Remove vote'
+              : !voteEligibility.canVote
+              ? voteEligibility.reason
+              : `Vote for this issue (${voteEligibility.scopeLabel})`
+          }
         >
           <ChevronUp className={`w-4 h-4 transition-transform ${isVoted ? 'stroke-[2.5]' : 'stroke-2 group-hover:-translate-y-0.5'}`} />
           <span className="text-[13px] font-bold leading-none mt-0.5 select-none font-sans">

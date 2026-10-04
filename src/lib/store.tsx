@@ -32,6 +32,7 @@ import { runComprehensiveDeadlineCheck, generateDailyDigests } from '@/lib/deadl
 import { createEmailItem, dispatchEmail, EmailTemplates } from '@/lib/email-service';
 import { DEFAULT_ABUSE_WORDS, checkIssueContent } from '@/lib/moderation';
 import { LoadTestResult, execute500UserLoadTest } from '@/lib/load-test';
+import { checkVoteEligibility } from '@/lib/vote-eligibility';
 
 interface SunwaiContextType {
   currentUser: User | null;
@@ -57,6 +58,7 @@ interface SunwaiContextType {
     category: IssueCategory;
     scope: IssueScope;
     hostel: string;
+    section?: string;
     visibility: IssueVisibility;
     ownerRoleId: string;
     ccRoleIds: string[];
@@ -325,6 +327,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     category: IssueCategory;
     scope: IssueScope;
     hostel: string;
+    section?: string;
     visibility: IssueVisibility;
     ownerRoleId: string;
     ccRoleIds: string[];
@@ -359,6 +362,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       category: data.category,
       scope: data.scope,
       hostel: data.hostel,
+      section: data.section,
       visibility: data.visibility,
       status: 'Raised',
       severity: 'Normal',
@@ -424,9 +428,27 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     return newIssue;
   };
 
-  // S6: Upvote Issue with 7-day priority deadline
+  // S6: Upvote Issue with 7-day priority deadline & Hostel/Section eligibility
   const upvoteIssue = (issueId: string) => {
+    const targetIssue = issues.find((i) => i.id === issueId);
+    if (!targetIssue) return;
+
     const hasVoted = userVotes.has(issueId);
+    const raiser = getUserById(targetIssue.raised_by);
+    const eligibility = checkVoteEligibility(currentUser, targetIssue, raiser);
+
+    // If trying to add a new vote and user is not eligible, prevent action
+    if (!hasVoted && !eligibility.canVote) {
+      alert(eligibility.reason || 'You are not eligible to vote on this issue.');
+      return;
+    }
+
+    // Call server endpoint
+    fetch('/api/issues/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issue_id: issueId }),
+    }).catch((e) => console.warn('Vote server sync skipped:', e));
 
     setUserVotes((prev) => {
       const next = new Set(prev);

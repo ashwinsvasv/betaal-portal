@@ -140,6 +140,7 @@ export default function RaiseIssuePage() {
         category,
         scope,
         hostel: currentUser.hostel,
+        section: currentUser.section || 'Section A',
         visibility,
         ownerRoleId: finalOwnerRoleId,
         ccRoleIds: routing.ccRoleIds,
@@ -335,8 +336,9 @@ export default function RaiseIssuePage() {
                 onChange={(e) => setScope(e.target.value as IssueScope)}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[14px] px-3.5 py-2.5 rounded-xl focus:bg-white focus:border-blue-600 focus:outline-none transition-colors"
               >
-                <option value="my room">My room ({currentUser.hostel})</option>
-                <option value="my hostel">My hostel ({currentUser.hostel})</option>
+                <option value="my room">My room ({currentUser.hostel || 'Hostel'})</option>
+                <option value="my hostel">My hostel ({currentUser.hostel || 'Hostel'})</option>
+                <option value="my section">My section ({currentUser.section || 'Section A'})</option>
                 <option value="whole campus">Whole campus</option>
               </select>
             </div>

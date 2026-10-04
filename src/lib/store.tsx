@@ -143,7 +143,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   const [lastCronReport, setLastCronReport] = useState<CronRunReport | null>(null);
   const [simulatedClockOffsetHours, setSimulatedClockOffsetHours] = useState<number>(0);
 
-  // Hydrate from localStorage on client load
+  // Hydrate initial state and fetch live data from Supabase backend
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -167,6 +167,21 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
           setSimulatedClockOffsetHours(parsed.simulatedClockOffsetHours);
         }
       }
+
+      // Fetch live data from Supabase if connected
+      fetch('/api/issues')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.source === 'supabase') {
+            if (data.issues && data.issues.length > 0) setIssues(data.issues);
+            if (data.users && data.users.length > 0) setUsers(data.users);
+            if (data.roles && data.roles.length > 0) setRoles(data.roles);
+            if (data.userVotes && data.userVotes.length > 0) {
+              setUserVotes(new Set(data.userVotes));
+            }
+          }
+        })
+        .catch((err) => console.warn('Supabase fetch sync skipped:', err));
     } catch (e) {
       console.error('Error loading stored state:', e);
     }

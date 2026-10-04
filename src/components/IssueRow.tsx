@@ -5,6 +5,18 @@ import Link from 'next/link';
 import { Issue } from '@/types';
 import { useSunwai } from '@/lib/store';
 import { AccountabilityPill } from './AccountabilityPill';
+import { CategoryBadge } from '@/lib/category-config';
+import {
+  ChevronUp,
+  Building2,
+  Globe,
+  Lock,
+  Flame,
+  MessageSquare,
+  Image as ImageIcon,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react';
 
 interface Props {
   issue: Issue;
@@ -47,31 +59,37 @@ export function IssueRow({ issue, showVote = true }: Props) {
   // Public Identity Rule (Section 6):
   // "Other students see the raiser only as 'a PGP 42 student'. Only the owner and the President see the name."
   const authorDisplay = isOwner || isPresident || isRaiser
-    ? raiser?.name || 'Student'
+    ? `${raiser?.name || 'Student'} (${raiser?.hostel || 'Hostel'})`
     : `a ${raiser?.course || 'PGP'} ${raiser?.batch || '42'} student`;
 
   // Issue number
   const issueNum = issue.id.replace('issue-', '').slice(-4);
 
-  // Scope label
-  const scopeLabel = issue.scope === 'whole campus' ? 'Whole campus' : issue.hostel;
+  // Scope label & Icon
+  const isCampus = issue.scope === 'whole campus';
+  const scopeLabel = isCampus ? 'Whole campus' : issue.hostel;
 
-  // At most ONE badge: "Private" takes precedence, otherwise "Priority"
-  let badge: { label: string; className: string } | null = null;
-  if (issue.visibility === 'private') {
-    badge = {
-      label: 'Private',
-      className: 'bg-[#eaedfb] text-[#2f45c5]',
-    };
-  } else if (issue.is_priority) {
-    badge = {
-      label: 'Priority',
-      className: 'bg-[#fdecea] text-[#b42318]',
-    };
-  }
+  // Status Stepper Level (1: Raised, 2: Acknowledged, 3: In Progress, 4: Completed/Closed)
+  const getStepProgress = () => {
+    switch (issue.status) {
+      case 'Raised':
+        return 1;
+      case 'Acknowledged':
+        return 2;
+      case 'In Progress':
+        return 3;
+      case 'Completed':
+      case 'Closed':
+        return 4;
+      default:
+        return 1;
+    }
+  };
+  const stepLevel = getStepProgress();
+  const isResolved = issue.status === 'Completed' || issue.status === 'Closed';
 
   return (
-    <div className="p-4 sm:p-5 flex items-start gap-3.5 sm:gap-4 hover:bg-[#fafbfc] transition-colors">
+    <div className="p-4 sm:p-5 flex items-start gap-3.5 sm:gap-4.5 hover:bg-slate-50/70 transition-all duration-150 border-b border-gray-100 last:border-b-0 group">
       {/* Left: Vote Box (only if showVote is true) */}
       {showVote && (
         <button
@@ -81,50 +99,111 @@ export function IssueRow({ issue, showVote = true }: Props) {
             e.stopPropagation();
             upvoteIssue(issue.id);
           }}
-          className={`shrink-0 w-11 h-12 rounded-[8px] border flex flex-col items-center justify-center transition-colors ${
+          className={`shrink-0 w-11 sm:w-12 h-13 rounded-xl border flex flex-col items-center justify-center transition-all ${
             isVoted
-              ? 'bg-[#eaedfb] border-[#2f45c5] text-[#2f45c5]'
-              : 'bg-white border-[#dde2ea] text-[#5b6478] hover:border-[#2f45c5] hover:text-[#2f45c5]'
+              ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-600/20'
+              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/30'
           }`}
           title={isVoted ? 'Remove vote' : 'Vote for this issue'}
         >
-          <span className="text-[10px] leading-none select-none">▲</span>
-          <span className="text-[13px] font-semibold leading-none mt-1 select-none font-sans">
+          <ChevronUp className={`w-4 h-4 transition-transform ${isVoted ? 'stroke-[2.5]' : 'stroke-2 group-hover:-translate-y-0.5'}`} />
+          <span className="text-[13px] font-bold leading-none mt-0.5 select-none font-sans">
             {issue.vote_count}
           </span>
         </button>
       )}
 
       {/* Right Column */}
-      <div className="flex-1 min-w-0">
-        {/* Top Meta Line: #12  Mess & food  Whole campus + at most one badge */}
-        <div className="flex items-center gap-2 text-[12px] text-[#5b6478] mb-1 flex-wrap">
-          <span className="font-mono">#{issueNum}</span>
-          <span>·</span>
-          <span>{issue.category}</span>
-          <span>·</span>
-          <span>{scopeLabel}</span>
+      <div className="flex-1 min-w-0 space-y-2">
+        {/* Top Badges Row */}
+        <div className="flex items-center gap-2 flex-wrap text-[12px]">
+          {/* Issue ID */}
+          <span className="font-mono text-slate-400 font-medium text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">
+            #{issueNum}
+          </span>
 
-          {badge && (
-            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ml-1 ${badge.className}`}>
-              {badge.label}
+          {/* Category Badge with Lucide Icon */}
+          <CategoryBadge category={issue.category} size="xs" />
+
+          {/* Location Scope */}
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 rounded-md">
+            {isCampus ? (
+              <Globe className="w-3 h-3 text-slate-500 shrink-0" />
+            ) : (
+              <Building2 className="w-3 h-3 text-slate-500 shrink-0" />
+            )}
+            <span>{scopeLabel}</span>
+          </span>
+
+          {/* Private Badge */}
+          {issue.visibility === 'private' && (
+            <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+              <Lock className="w-3 h-3 shrink-0" />
+              <span>Private</span>
+            </span>
+          )}
+
+          {/* Priority Flag */}
+          {issue.is_priority && (
+            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200/80 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+              <Flame className="w-3 h-3 shrink-0" />
+              <span>Priority</span>
+            </span>
+          )}
+
+          {/* Photos indicator */}
+          {issue.photos && issue.photos.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-md ml-auto">
+              <ImageIcon className="w-3 h-3 text-slate-400" />
+              <span>{issue.photos.length}</span>
             </span>
           )}
         </div>
 
-        {/* Title: serif, 18px, links to the issue */}
-        <h2 className="text-[18px] font-serif text-[#16213e] leading-snug mb-2">
-          <Link href={`/issue/${issue.id}`} className="hover:text-[#2f45c5] transition-colors">
-            {issue.title}
-          </Link>
-        </h2>
+        {/* Title: Links to issue detail */}
+        <div>
+          <h2 className="text-[17px] sm:text-[18px] font-serif font-bold text-slate-900 leading-snug group-hover:text-blue-700 transition-colors">
+            <Link href={`/issue/${issue.id}`} className="hover:underline">
+              {issue.title}
+            </Link>
+          </h2>
 
-        {/* Bottom Line: Accountability pill + small grey text */}
-        <div className="flex items-center gap-2.5 flex-wrap text-[12px] text-[#5b6478]">
-          <AccountabilityPill issue={issue} ownerRole={ownerRole} />
-          <span>
-            Raised {getAgeString()} by {authorDisplay}, {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
-          </span>
+          {/* Short details preview snippet */}
+          {issue.details && (
+            <p className="text-[13px] text-slate-500 line-clamp-1 mt-0.5">
+              {issue.details}
+            </p>
+          )}
+        </div>
+
+        {/* Bottom Line: Accountability Pill, Stepper & Meta Info */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5 border-t border-slate-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <AccountabilityPill issue={issue} ownerRole={ownerRole} />
+            
+            <span className="text-[12px] text-slate-500">
+              by <span className="font-medium text-slate-700">{authorDisplay}</span> · {getAgeString()}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[12px] text-slate-500 self-start sm:self-auto shrink-0">
+            {/* Resolution indicator if resolved */}
+            {isResolved && (
+              <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[11px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Resolved</span>
+              </span>
+            )}
+
+            {/* Comments Counter */}
+            <Link
+              href={`/issue/${issue.id}#comments`}
+              className="inline-flex items-center gap-1 hover:text-slate-800 transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+              <span>{commentCount}</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

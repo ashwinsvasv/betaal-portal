@@ -6,7 +6,23 @@ import { useSunwai } from '@/lib/store';
 import { IssueCategory, IssueScope, IssueVisibility } from '@/types';
 import { determineSuggestedOwner } from '@/lib/routing';
 import { findSimilarIssues } from '@/lib/duplicate-detector';
+import { ALL_CATEGORIES, getCategoryMeta } from '@/lib/category-config';
 import Link from 'next/link';
+import {
+  ChevronUp,
+  AlertCircle,
+  Building2,
+  Globe,
+  Lock,
+  ArrowRight,
+  ArrowLeft,
+  Image as ImageIcon,
+  Plus,
+  X,
+  ShieldCheck,
+  Sparkles,
+  Search,
+} from 'lucide-react';
 
 export default function RaiseIssuePage() {
   const router = useRouter();
@@ -54,14 +70,17 @@ export default function RaiseIssuePage() {
 
   if (!currentUser) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
-        <p className="text-[14px] text-[#64748b]">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-xs">
+        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h1 className="text-[22px] font-serif font-bold text-slate-900">Please sign in</h1>
+        <p className="text-[14px] text-slate-600">
           Sign in with your IIM Lucknow account to raise an issue, attach photos, and receive official SLA updates from your representative.
         </p>
         <Link
           href="/signin"
-          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
         >
           Sign in with IIML Google
         </Link>
@@ -100,27 +119,21 @@ export default function RaiseIssuePage() {
       setError('Add a descriptive title (at least 5 characters).');
       return;
     }
-    if (!details.trim() || details.length < 15) {
-      setError('Explain what needs fixing (at least 15 characters).');
+    if (!details.trim() || details.length < 10) {
+      setError('Add some details explaining the problem (at least 10 characters).');
       return;
     }
 
     setStep(2);
   };
 
-  const handleFinalSubmit = (toPresident: boolean) => {
-    let targetRoleId = routing.ownerRoleId;
-    let targetCc = routing.ccRoleIds;
-
-    if (toPresident) {
-      const presRole = roles.find((r) => r.name === 'President');
-      if (presRole) {
-        targetRoleId = presRole.id;
-        targetCc = [];
-      }
-    }
-
+  const handleFinalSubmit = (forcePresident: boolean) => {
+    setError('');
     try {
+      const finalOwnerRoleId = forcePresident
+        ? roles.find((r) => r.name === 'President')?.id || routing.ownerRoleId
+        : routing.ownerRoleId;
+
       const created = raiseIssue({
         title: title.trim(),
         details: details.trim(),
@@ -128,75 +141,106 @@ export default function RaiseIssuePage() {
         scope,
         hostel: currentUser.hostel,
         visibility,
-        ownerRoleId: targetRoleId,
-        ccRoleIds: targetCc,
+        ownerRoleId: finalOwnerRoleId,
+        ccRoleIds: routing.ccRoleIds,
         photos,
       });
 
       router.push(`/issue/${created.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to raise issue. Please try again.';
+      const msg = err instanceof Error ? err.message : 'Could not raise issue. Please try again.';
       setError(msg);
+      setStep(1);
     }
   };
 
   return (
-    <div className="max-w-[720px] mx-auto space-y-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-[30px] font-serif text-[#0f172a] font-bold leading-tight">
-          Raise an issue
-        </h1>
-        <p className="text-[15px] text-[#64748b] mt-1">
-          {step === 1
-            ? 'Step 1 of 2: Describe the problem on campus.'
-            : 'Step 2 of 2: Check who this goes to.'}
-        </p>
+    <div className="max-w-[700px] mx-auto space-y-6">
+      {/* Progress Steps Header */}
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold ${
+              step === 1 ? 'bg-blue-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            {step === 1 ? '1' : '✓'}
+          </div>
+          <span className={`text-[14px] font-bold ${step === 1 ? 'text-slate-900' : 'text-slate-500'}`}>
+            1. Issue Details
+          </span>
+
+          <span className="text-slate-300">───</span>
+
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold ${
+              step === 2 ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            2
+          </div>
+          <span className={`text-[14px] font-bold ${step === 2 ? 'text-slate-900' : 'text-slate-400'}`}>
+            2. Routing & SLA
+          </span>
+        </div>
       </div>
 
+      {/* Error Banner */}
       {error && (
-        <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3.5 rounded-xl">
-          {error}
+        <div className="bg-rose-50 border border-rose-300 text-rose-800 text-[14px] p-4 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button type="button" onClick={() => setError('')} className="text-rose-700 font-bold text-xs ml-4">
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Step 1: The Form */}
+      {/* Step 1 Form */}
       {step === 1 && (
-        <form onSubmit={handleProceedToStep2} className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 space-y-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-          {/* Issue Title */}
+        <form onSubmit={handleProceedToStep2} className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 space-y-6 shadow-xs">
           <div>
-            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+            <h1 className="text-[24px] sm:text-[26px] font-serif font-bold text-slate-900 leading-tight">
+              Raise a Campus Grievance
+            </h1>
+            <p className="text-[14px] text-slate-600 mt-1">
+              Every issue is assigned directly to the responsible representative with an enforceable 48-hour response clock.
+            </p>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="block text-[14px] font-semibold text-slate-900 mb-1.5">
               Title
             </label>
             <input
               type="text"
               value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setDismissDuplicates(false);
-              }}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Wi-Fi router on 2nd floor Hostel 3 keeps dropping"
-              className="w-full bg-white border border-[#dde2ea] text-[#16213e] placeholder-gray-400 text-[15px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-[15px] px-3.5 py-2.5 rounded-xl focus:bg-white focus:border-blue-600 focus:outline-none transition-colors"
             />
           </div>
 
-          {/* Real-Time Duplicate Detection Panel */}
+          {/* Duplicate Detection Callout */}
           {similarIssues.length > 0 && (
-            <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
+            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[13px] font-bold text-[#1d4ed8]">
-                  <span className="text-base">💡</span>
-                  <span>Similar open issues already reported on campus ({similarIssues.length})</span>
+                <div className="flex items-center gap-2 text-blue-950 font-bold text-[14px]">
+                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Similar open issues already reported</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setDismissDuplicates(true)}
-                  className="text-[11px] text-gray-400 hover:text-gray-700 underline"
+                  className="text-[12px] text-blue-600 hover:text-blue-800 underline"
                 >
                   Dismiss
                 </button>
               </div>
-              <p className="text-[12px] text-[#1e40af]">
+              <p className="text-[13px] text-blue-900/80">
                 Upvoting an existing issue combines student demand to reach the <strong>10% Priority threshold</strong> faster.
               </p>
 
@@ -209,25 +253,23 @@ export default function RaiseIssuePage() {
                   return (
                     <div
                       key={match.issue.id}
-                      className="bg-white rounded-lg p-3 border border-[#dbeafe] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-[#93c5fd] transition-all"
+                      className="bg-white rounded-xl p-3 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:border-blue-300 transition-all"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-0.5 flex-wrap">
-                          <span className="font-mono font-bold text-gray-700">#{issueNum}</span>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-0.5 flex-wrap">
+                          <span className="font-mono font-bold text-slate-700">#{issueNum}</span>
                           <span>·</span>
                           <span>{match.issue.category}</span>
                           <span>·</span>
-                          <span>
-                            {match.issue.scope === 'whole campus' ? 'Whole campus' : match.issue.hostel}
-                          </span>
-                          <span className="bg-[#dbeafe] text-[#1e40af] px-1.5 py-0.5 rounded text-[10px] font-bold">
+                          <span>{match.issue.scope === 'whole campus' ? 'Whole campus' : match.issue.hostel}</span>
+                          <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
                             {matchPercent}% match
                           </span>
                         </div>
-                        <div className="font-semibold text-[14px] text-[#0f172a] line-clamp-1">
+                        <div className="font-semibold text-[14px] text-slate-900 line-clamp-1">
                           {match.issue.title}
                         </div>
-                        <div className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
+                        <div className="text-[12px] text-slate-500 line-clamp-1 mt-0.5">
                           {match.issue.details}
                         </div>
                       </div>
@@ -239,11 +281,11 @@ export default function RaiseIssuePage() {
                           onClick={() => upvoteIssue(match.issue.id)}
                           className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all ${
                             isVoted
-                              ? 'bg-[#dbeafe] text-[#1d4ed8] border border-[#93c5fd]'
-                              : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
                           }`}
                         >
-                          <span>▲</span>
+                          <ChevronUp className="w-3.5 h-3.5" />
                           <span>{isVoted ? 'Voted' : 'Upvote instead'}</span>
                           <span className="text-[11px] opacity-80 font-normal">
                             ({match.issue.vote_count})
@@ -253,7 +295,7 @@ export default function RaiseIssuePage() {
                         <Link
                           href={`/issue/${match.issue.id}`}
                           target="_blank"
-                          className="text-[12px] text-gray-600 hover:text-[#2563eb] font-medium underline px-1 py-1"
+                          className="text-[12px] text-slate-600 hover:text-blue-600 font-medium underline px-1 py-1"
                         >
                           View ↗
                         </Link>
@@ -268,34 +310,30 @@ export default function RaiseIssuePage() {
           {/* Category & Scope */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+              <label className="block text-[14px] font-semibold text-slate-900 mb-1.5">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as IssueCategory)}
-                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[14px] px-3.5 py-2.5 rounded-xl focus:bg-white focus:border-blue-600 focus:outline-none transition-colors"
               >
-                <option value="Infra & IT">Infra & IT</option>
-                <option value="Hostel life">Hostel life</option>
-                <option value="Mess and food">Mess and food</option>
-                <option value="Academics">Academics</option>
-                <option value="Sports facilities and events">Sports facilities and events</option>
-                <option value="Events">Events</option>
-                <option value="Cultural">Cultural</option>
-                <option value="Finance and reimbursements">Finance and reimbursements</option>
-                <option value="Other / not sure">Other / not sure</option>
+                {ALL_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
-                Scope
+              <label className="block text-[14px] font-semibold text-slate-900 mb-1.5">
+                Location Scope
               </label>
               <select
                 value={scope}
                 onChange={(e) => setScope(e.target.value as IssueScope)}
-                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[14px] px-3.5 py-2.5 rounded-xl focus:bg-white focus:border-blue-600 focus:outline-none transition-colors"
               >
                 <option value="my room">My room ({currentUser.hostel})</option>
                 <option value="my hostel">My hostel ({currentUser.hostel})</option>
@@ -306,26 +344,26 @@ export default function RaiseIssuePage() {
 
           {/* Details */}
           <div>
-            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
-              Details
+            <label className="block text-[14px] font-semibold text-slate-900 mb-1.5">
+              Grievance Details
             </label>
             <textarea
               rows={4}
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               placeholder="Describe the exact location, when it started, and how it affects students..."
-              className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[15px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] px-3.5 py-2.5 rounded-xl focus:bg-white focus:border-blue-600 focus:outline-none transition-colors"
             />
           </div>
 
-          {/* Photos (optional) */}
+          {/* Photos */}
           <div>
-            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+            <label className="block text-[14px] font-semibold text-slate-900 mb-1.5">
               Photos (optional, up to 3)
             </label>
             <div className="flex items-center gap-3 flex-wrap">
               {photos.map((p, idx) => (
-                <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#dde2ea] shadow-xs">
+                <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-2xs">
                   <img src={p} alt="Upload" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -337,8 +375,9 @@ export default function RaiseIssuePage() {
                 </div>
               ))}
               {photos.length < 3 && (
-                <label className="w-20 h-20 rounded-xl border border-dashed border-[#dde2ea] hover:border-[#2563eb] flex flex-col items-center justify-center cursor-pointer text-[12px] text-[#64748b] bg-[#f8fafc] transition-colors">
-                  <span>+ Add photo</span>
+                <label className="w-20 h-20 rounded-xl border border-dashed border-slate-300 hover:border-blue-600 flex flex-col items-center justify-center cursor-pointer text-[12px] text-slate-500 bg-slate-50 hover:bg-blue-50/30 transition-colors">
+                  <Plus className="w-4 h-4 mb-0.5 text-slate-400" />
+                  <span>Photo</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -351,16 +390,16 @@ export default function RaiseIssuePage() {
           </div>
 
           {/* Visibility */}
-          <div className="border-t border-gray-100 pt-4">
-            <label className="block text-[14px] font-semibold text-[#0f172a] mb-2">
+          <div className="border-t border-slate-100 pt-4">
+            <label className="block text-[14px] font-semibold text-slate-900 mb-2">
               Visibility
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[14px]">
               <label
-                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
                   visibility === 'public'
-                    ? 'border-[#2563eb] bg-[#eff6ff]'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-blue-600 bg-blue-50/70 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <input
@@ -369,21 +408,24 @@ export default function RaiseIssuePage() {
                   value="public"
                   checked={visibility === 'public'}
                   onChange={() => setVisibility('public')}
-                  className="mt-0.5"
+                  className="mt-1"
                 />
                 <div>
-                  <div className="font-semibold text-[#0f172a]">Public</div>
-                  <div className="text-[12px] text-[#64748b] mt-0.5">
-                    Visible to all campus students. Can receive upvotes.
+                  <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-blue-600" />
+                    <span>Public</span>
+                  </div>
+                  <div className="text-[12px] text-slate-500 mt-0.5">
+                    Visible on campus feed. Can receive student upvotes.
                   </div>
                 </div>
               </label>
 
               <label
-                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
                   visibility === 'private'
-                    ? 'border-[#2563eb] bg-[#eff6ff]'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-blue-600 bg-blue-50/70 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <input
@@ -392,12 +434,15 @@ export default function RaiseIssuePage() {
                   value="private"
                   checked={visibility === 'private'}
                   onChange={() => setVisibility('private')}
-                  className="mt-0.5"
+                  className="mt-1"
                 />
                 <div>
-                  <div className="font-semibold text-[#0f172a]">Private</div>
-                  <div className="text-[12px] text-[#64748b] mt-0.5">
-                    Visible only to you, the assigned owner, and the President.
+                  <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-blue-600" />
+                    <span>Private</span>
+                  </div>
+                  <div className="text-[12px] text-slate-500 mt-0.5">
+                    Confidential. Visible only to you, assigned owner, and President.
                   </div>
                 </div>
               </label>
@@ -405,51 +450,53 @@ export default function RaiseIssuePage() {
           </div>
 
           {/* Next Button */}
-          <div className="pt-2 flex items-center justify-between border-t border-gray-100">
-            <Link href="/" className="text-[14px] text-[#64748b] hover:text-[#0f172a]">
+          <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+            <Link href="/" className="text-[14px] text-slate-500 hover:text-slate-900 font-medium">
               Cancel
             </Link>
             <button
               type="submit"
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
             >
-              Next: Check who this goes to →
+              <span>Next: Check who this goes to</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </form>
       )}
 
-      {/* Step 2: Check who this goes to */}
+      {/* Step 2: Routing Confirmation */}
       {step === 2 && (
-        <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 space-y-6 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 space-y-6 shadow-xs">
           <div className="space-y-1">
-            <h2 className="text-[22px] font-serif text-[#0f172a] font-bold">
+            <h2 className="text-[22px] font-serif text-slate-900 font-bold">
               Check who this goes to
             </h2>
-            <p className="text-[14px] text-[#64748b]">
+            <p className="text-[14px] text-slate-600">
               Based on the category and scope, Sunwai assigns this ticket to an official council owner with a strict 48-hour response SLA.
             </p>
           </div>
 
           {/* Assigned Owner Box */}
-          <div className="bg-[#f8fafc] rounded-xl p-5 border border-gray-200 space-y-3 text-[14px]">
+          <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 text-[14px]">
             <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">Assigned owner:</span>
-              <span className="font-bold text-[#0f172a]">
-                {routing.ownerRoleName}
+              <span className="text-slate-500">Assigned owner:</span>
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                <span>{routing.ownerRoleName}</span>
               </span>
             </div>
 
             {routing.ccRoleNames.length > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-[#64748b]">Copied:</span>
-                <span className="text-[#0f172a] font-medium">
+                <span className="text-slate-500">Copied:</span>
+                <span className="text-slate-900 font-medium">
                   {routing.ccRoleNames.join(', ')}
                 </span>
               </div>
             )}
 
-            <div className="text-[13px] text-[#64748b] border-t border-gray-200 pt-2">
+            <div className="text-[13px] text-slate-600 border-t border-slate-200 pt-2">
               {routing.reason}
             </div>
           </div>
@@ -459,7 +506,7 @@ export default function RaiseIssuePage() {
             <button
               type="button"
               onClick={() => handleFinalSubmit(false)}
-              className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[15px] font-semibold py-3 px-4 rounded-xl transition-all text-center shadow-xs"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold py-3 px-4 rounded-xl transition-all text-center shadow-xs"
             >
               Send to {routing.ownerRoleName}
             </button>
@@ -467,7 +514,7 @@ export default function RaiseIssuePage() {
             <button
               type="button"
               onClick={() => handleFinalSubmit(true)}
-              className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#0f172a] text-[14px] font-semibold py-2.5 px-4 rounded-xl transition-colors text-center"
+              className="w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-[14px] font-semibold py-2.5 px-4 rounded-xl transition-colors text-center"
             >
               Not sure, send to the President
             </button>
@@ -477,9 +524,10 @@ export default function RaiseIssuePage() {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="text-[13px] text-[#64748b] hover:text-[#0f172a] underline"
+              className="text-[13px] text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 font-medium"
             >
-              ← Back to edit issue
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to edit issue</span>
             </button>
           </div>
         </div>

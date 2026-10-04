@@ -4,6 +4,16 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSunwai } from '@/lib/store';
+import {
+  Search,
+  Plus,
+  LogOut,
+  Layers,
+  FileText,
+  Inbox,
+  LayoutDashboard,
+  Mail,
+} from 'lucide-react';
 
 export function Header() {
   const pathname = usePathname();
@@ -38,10 +48,10 @@ export function Header() {
     : '';
 
   const navLinkClass = (active: boolean) =>
-    `text-[13px] sm:text-[14px] font-medium transition-colors px-3 py-1.5 rounded-full ${
+    `text-[13px] sm:text-[14px] font-medium transition-all px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
       active
-        ? 'bg-[#1e293b] text-white shadow-xs'
-        : 'text-[#475569] hover:text-[#0f172a] hover:bg-gray-100/80'
+        ? 'bg-slate-900 text-white shadow-2xs font-semibold'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
     }`;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -54,20 +64,20 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200/80 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+    <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
       {/* Top Main Bar */}
       <div className="max-w-[1050px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-4">
         {/* Left: Etrigan-Style Logo */}
         <Link href="/" className="flex flex-col items-start leading-none group shrink-0">
           <div className="flex items-baseline">
-            <span className="text-[22px] sm:text-[24px] font-black tracking-tight text-[#0f172a] font-sans">
+            <span className="text-[22px] sm:text-[24px] font-black tracking-tight text-slate-900 font-sans">
               Sunwai
             </span>
-            <span className="text-[20px] sm:text-[22px] font-black text-[#dc2626] ml-1 tracking-tight">
+            <span className="text-[20px] sm:text-[22px] font-black text-rose-600 ml-1 tracking-tight">
               1.0
             </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-medium text-gray-400 tracking-tight lowercase -mt-0.5 group-hover:text-gray-600 transition-colors">
+          <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 tracking-tight lowercase -mt-0.5 group-hover:text-slate-600 transition-colors">
             connecting hell!
           </span>
         </Link>
@@ -75,21 +85,14 @@ export function Header() {
         {/* Center: Etrigan-Style Pill Search */}
         <div className="hidden sm:flex flex-1 max-w-[380px] mx-2">
           <form onSubmit={handleSearchSubmit} className="w-full relative flex items-center">
+            <Search className="w-4 h-4 absolute left-3.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={headerSearch}
               onChange={(e) => setHeaderSearch(e.target.value)}
-              placeholder="PGPID, Name or Issue..."
-              className="w-full bg-[#f3f4f6] text-[#0f172a] placeholder-gray-400 text-[13px] pl-4 pr-16 py-2 rounded-full border border-gray-200/70 focus:bg-white focus:border-[#2563eb] transition-all"
+              placeholder="Search issues, keywords..."
+              className="w-full bg-slate-100/80 text-slate-900 placeholder-slate-400 text-[13px] pl-9.5 pr-4 py-2 rounded-full border border-slate-200/70 focus:bg-white focus:border-blue-600 focus:outline-none transition-all"
             />
-            <div className="absolute right-3 flex items-center gap-1.5 text-gray-400 pointer-events-none">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-            </div>
           </form>
         </div>
 
@@ -98,25 +101,25 @@ export function Header() {
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link
               href="/raise"
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-full transition-all shadow-xs flex items-center gap-1.5"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-full transition-all shadow-xs flex items-center gap-1.5"
             >
-              <span className="text-base leading-none font-bold">+</span>
+              <Plus className="w-4 h-4" />
               <span>Raise issue</span>
             </Link>
 
             {/* User Profile Card */}
-            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-gray-200">
+            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-200">
               <div
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs ring-1 ring-black/5 shrink-0"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-700 text-white flex items-center justify-center font-bold text-xs uppercase shadow-2xs ring-1 ring-black/5 shrink-0"
                 title={`${currentUser.name} (${roleDisplay})`}
               >
                 {initials}
               </div>
               <div className="hidden lg:flex flex-col text-left leading-tight">
-                <span className="text-[13px] font-bold text-gray-900 max-w-[130px] truncate">
+                <span className="text-[13px] font-bold text-slate-900 max-w-[130px] truncate">
                   {currentUser.name}
                 </span>
-                <span className="text-[11px] font-medium text-gray-500 uppercase tracking-tight">
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-tight">
                   {rollOrBatch}
                 </span>
               </div>
@@ -127,18 +130,16 @@ export function Header() {
               type="button"
               onClick={logout}
               title="Sign out"
-              className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/signin"
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all shadow-xs"
             >
               Sign in with IIML Google
             </Link>
@@ -147,22 +148,25 @@ export function Header() {
       </div>
 
       {/* Subnav Navigation Links Bar */}
-      <div className="border-t border-gray-100 bg-[#f8fafc]/70">
+      <div className="border-t border-slate-100 bg-slate-50/70">
         <div className="max-w-[1050px] mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-between overflow-x-auto gap-2 scrollbar-none">
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link href="/" className={navLinkClass(pathname === '/')}>
-              All issues
+              <Layers className="w-3.5 h-3.5" />
+              <span>All issues</span>
             </Link>
 
             {currentUser && (
               <Link href="/my-issues" className={navLinkClass(pathname === '/my-issues')}>
-                My issues
+                <FileText className="w-3.5 h-3.5" />
+                <span>My issues</span>
               </Link>
             )}
 
             {isCouncil && (
               <Link href="/inbox" className={navLinkClass(pathname === '/inbox')}>
-                My inbox
+                <Inbox className="w-3.5 h-3.5" />
+                <span>My inbox</span>
               </Link>
             )}
 
@@ -171,25 +175,27 @@ export function Header() {
                 href="/dashboard"
                 className={navLinkClass(pathname === '/dashboard' || pathname === '/president')}
               >
-                Dashboard
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
               </Link>
             )}
 
             {(isCouncil || isPresidentOrAdmin) && (
               <Link href="/outbox" className={navLinkClass(pathname === '/outbox')}>
-                Email log
+                <Mail className="w-3.5 h-3.5" />
+                <span>Email log</span>
               </Link>
             )}
           </nav>
 
           {currentUser ? (
-            <div className="text-[11px] text-gray-400 font-medium hidden sm:block">
-              Signed in as <span className="text-gray-700 font-semibold">{roleDisplay}</span>
+            <div className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              Signed in as <span className="text-slate-700 font-semibold">{roleDisplay}</span>
             </div>
           ) : (
-            <div className="text-[11px] text-gray-400 font-medium hidden sm:block">
-              <Link href="/signin" className="hover:text-[#2563eb] underline">
-                Sign in to raise issues or view your inbox
+            <div className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              <Link href="/signin" className="hover:text-blue-600 underline">
+                Sign in to raise issues or track tickets
               </Link>
             </div>
           )}

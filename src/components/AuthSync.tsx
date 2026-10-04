@@ -12,7 +12,7 @@ import { parseRollNumber } from '@/lib/student-upload';
  */
 export function AuthSync() {
   const { data: session, status } = useSession();
-  const { users, currentUser, setCurrentUser, createUser } = useSunwai();
+  const { users, currentUser, setCurrentUser, createUser, updateUser } = useSunwai();
   const router = useRouter();
   const pathname = usePathname();
   const syncedEmail = useRef<string | null>(null);
@@ -34,7 +34,20 @@ export function AuthSync() {
       ? users.find((u) => u.id === session.user.sunwaiUserId)
       : undefined;
     const existing = mapped ?? users.find((u) => u.email.toLowerCase() === email);
+    const googleName = session.user?.name;
+
     if (existing) {
+      if (googleName && googleName.trim() && existing.name !== googleName) {
+        const updated = { ...existing, name: googleName };
+        updateUser(existing.id, { name: googleName });
+        setCurrentUser(updated);
+        fetch('/api/users/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: existing.id, name: googleName, email: existing.email }),
+        }).catch(() => {});
+        return;
+      }
       setCurrentUser(existing);
       return;
     }
@@ -44,7 +57,7 @@ export function AuthSync() {
     const parsed = parseRollNumber(username);
     const created = createUser({
       roll_no: parsed.isValid ? username : username,
-      name: session.user?.name || username,
+      name: googleName || username,
       email,
       course: parsed.course || 'PGP',
       batch: parsed.batch || '42',
@@ -52,7 +65,12 @@ export function AuthSync() {
       is_active: true,
     });
     setCurrentUser(created);
-  }, [status, session, users, currentUser, setCurrentUser, createUser]);
+    fetch('/api/users/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: googleName || username, email }),
+    }).catch(() => {});
+  }, [status, session, users, currentUser, setCurrentUser, createUser, updateUser]);
 
   // Profile incomplete: keep the user on the one-time setup screen.
   useEffect(() => {

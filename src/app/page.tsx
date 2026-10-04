@@ -51,91 +51,6 @@ function AllIssuesContent() {
   const currentUserRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isPresident = currentUserRole?.name === 'President';
 
-  // If user is not signed in, gate access to issues
-  if (!currentUser) {
-    return (
-      <div className="space-y-8 py-4">
-        {/* Hero Gate Banner with Betaal Logo */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center space-y-6 shadow-sm max-w-2xl mx-auto">
-          <div className="flex flex-col items-center justify-center space-y-3">
-            <img
-              src={logoSrc}
-              alt="Betaal 1.0"
-              className="h-20 sm:h-24 w-auto max-w-[280px] sm:max-w-[340px] object-contain drop-shadow-md"
-            />
-            <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
-              IIM Lucknow Student Council Grievance Portal
-            </div>
-          </div>
-
-          {/* Purpose Brief */}
-          <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 text-left space-y-3">
-            <p className="text-[16px] font-bold text-slate-900 leading-snug">
-              Betaal keeps the Student Council accountable.
-            </p>
-            <ul className="space-y-2 text-[14px] text-slate-700 leading-relaxed">
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>Raise an issue, and it goes to the person whose job it is to fix it.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>They have 48 hours to reply, or it goes up the chain.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>Vote for what matters, and watch every step in the open until it&apos;s done.</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="pt-2">
-            <Link
-              href="/signin"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold px-6 py-3 rounded-full transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-              <span>Sign in with IIML Google</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-
-        {/* 3 Pillars Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="text-[16px] font-bold text-slate-900">Direct Accountability</h3>
-            <p className="text-[13px] text-slate-500 leading-relaxed">
-              Automatic routing to elected Cabinet Secretaries and Hostel Reps with enforceable response deadlines.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <h3 className="text-[16px] font-bold text-slate-900">Duplicate Prevention</h3>
-            <p className="text-[13px] text-slate-500 leading-relaxed">
-              Real-time detection finds existing reports so students can upvote and hit the 200+ Priority threshold faster.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Lock className="w-5 h-5" />
-            </div>
-            <h3 className="text-[16px] font-bold text-slate-900">Student Privacy</h3>
-            <p className="text-[13px] text-slate-500 leading-relaxed">
-              Public posts anonymize student identities, and private submissions remain strictly between the raiser and council.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Calculate status metric numbers across accessible issues
   const baseAccessibleIssues = useMemo(() => {
     return issues.filter((issue) => {
@@ -248,6 +163,91 @@ function AllIssuesContent() {
     });
     return groups;
   }, [filteredIssues]);
+
+  // If user is not signed in, gate access to issues
+  if (!currentUser) {
+    return (
+      <div className="space-y-8 py-4">
+        {/* Hero Gate Banner with Betaal Logo */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center space-y-6 shadow-sm max-w-2xl mx-auto">
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <img
+              src={logoSrc}
+              alt="Betaal 1.0"
+              className="h-20 sm:h-24 w-auto max-w-[280px] sm:max-w-[340px] object-contain drop-shadow-md"
+            />
+            <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
+              IIM Lucknow Student Council Grievance Portal
+            </div>
+          </div>
+
+          {/* Purpose Brief */}
+          <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 text-left space-y-3">
+            <p className="text-[16px] font-bold text-slate-900 leading-snug">
+              Betaal keeps the Student Council accountable.
+            </p>
+            <ul className="space-y-2 text-[14px] text-slate-700 leading-relaxed">
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <span>Raise an issue, and it goes to the person whose job it is to fix it.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>They have 48 hours to reply, or it goes up the chain.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Vote for what matters, and watch every step in the open until it&apos;s done.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/signin"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold px-6 py-3 rounded-full transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <span>Sign in with IIML Google</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+
+        {/* 3 Pillars Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Direct Accountability</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Automatic routing to elected Cabinet Secretaries and Hostel Reps with enforceable response deadlines.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Duplicate Prevention</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Real-time detection finds existing reports so students can upvote and hit the 200+ Priority threshold faster.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Student Privacy</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Public posts anonymize student identities, and private submissions remain strictly between the raiser and council.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

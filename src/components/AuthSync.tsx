@@ -20,7 +20,8 @@ export function AuthSync() {
   useEffect(() => {
     if (status !== 'authenticated') {
       syncedEmail.current = null;
-      if (status === 'unauthenticated' && currentUser && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+      const isDemo = typeof document !== 'undefined' && document.cookie.includes('betaal_demo_session=1');
+      if (status === 'unauthenticated' && currentUser && !isDemo && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
         setCurrentUser(null);
       }
       return;

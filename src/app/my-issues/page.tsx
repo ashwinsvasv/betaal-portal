@@ -20,41 +20,23 @@ export default function MyIssuesPage() {
   const [activeTab, setActiveTab] = useState<'raised' | 'upvoted' | 'hostel'>('raised');
   const [bannerNotice, setBannerNotice] = useState<string | null>(null);
 
-  if (!currentUser) {
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-xs">
-        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
-          <FileText className="w-6 h-6" />
-        </div>
-        <h1 className="text-[22px] font-serif font-bold text-slate-900">Please sign in</h1>
-        <p className="text-[14px] text-slate-600">
-          Sign in with your IIM Lucknow account to track issues you have raised, check reply deadlines, and follow issues you upvoted.
-        </p>
-        <Link
-          href="/signin"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
-        >
-          Sign in with IIML Google
-        </Link>
-      </div>
-    );
-  }
-
   // 1. Issues raised by current user
   const myRaisedIssues = useMemo(() => {
+    if (!currentUser) return [];
     return issues.filter((i) => i.raised_by === currentUser.id);
-  }, [issues, currentUser.id]);
+  }, [issues, currentUser]);
 
   // 2. Issues upvoted by current user
   const myUpvotedIssues = useMemo(() => {
+    if (!currentUser) return [];
     return issues.filter((i) => userVotes.has(i.id) && i.raised_by !== currentUser.id);
-  }, [issues, userVotes, currentUser.id]);
+  }, [issues, userVotes, currentUser]);
 
   // 3. Issues in my hostel
   const myHostelIssues = useMemo(() => {
-    if (!currentUser.hostel) return [];
+    if (!currentUser?.hostel) return [];
     return issues.filter((i) => i.hostel === currentUser.hostel);
-  }, [issues, currentUser.hostel]);
+  }, [issues, currentUser]);
 
   // Pending resolution confirmation for raiser
   const pendingConfirmations = useMemo(() => {
@@ -74,6 +56,26 @@ export default function MyIssuesPage() {
         return myRaisedIssues;
     }
   }, [activeTab, myRaisedIssues, myUpvotedIssues, myHostelIssues]);
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-xs">
+        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+          <FileText className="w-6 h-6" />
+        </div>
+        <h1 className="text-[22px] font-serif font-bold text-slate-900">Please sign in</h1>
+        <p className="text-[14px] text-slate-600">
+          Sign in with your IIM Lucknow account to track issues you have raised, check reply deadlines, and follow issues you upvoted.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in with IIML Google
+        </Link>
+      </div>
+    );
+  }
 
   const handleConfirm = (issueId: string) => {
     confirmResolution(issueId);

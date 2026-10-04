@@ -25,63 +25,10 @@ export default function DashboardPage() {
 
   const [cronNotice, setCronNotice] = useState<string | null>(null);
 
-  // If unauthenticated or viewer is not President or Admin
-  if (!currentUser) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
-        <p className="text-[14px] text-[#64748b]">
-          The central dashboard is reserved for the Student Council President and Administrators.
-        </p>
-        <Link
-          href="/signin"
-          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
-        >
-          Sign in as President
-        </Link>
-      </div>
-    );
-  }
-
-  if (!isPresident && !isAdmin) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Access restricted</h1>
-        <p className="text-[14px] text-[#64748b]">
-          The central dashboard is reserved for the Student Council President and Administrators.
-        </p>
-        <Link
-          href="/"
-          className="inline-block bg-gray-100 hover:bg-gray-200 text-[#0f172a] text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors"
-        >
-          Back to all issues
-        </Link>
-      </div>
-    );
-  }
-
   const now = Date.now();
 
-  // 1. Five Numbers in One Row (Section 2)
-  const openCount = issues.filter(
-    (i) => i.status !== 'Closed' && i.status !== 'Withdrawn' && i.status !== 'Rejected'
-  ).length;
+  const closedIssues = useMemo(() => issues.filter((i) => i.status === 'Closed'), [issues]);
 
-  const escalatedCount = issues.filter((i) => i.status.startsWith('Escalated')).length;
-
-  const lateCount = issues.filter((i) => {
-    if (i.status === 'Raised' && new Date(i.ack_deadline).getTime() < now) return true;
-    if (i.status === 'In Progress' && i.next_update_due && new Date(i.next_update_due).getTime() < now) {
-      return true;
-    }
-    return false;
-  }).length;
-
-  const priorityCount = issues.filter(
-    (i) => i.is_priority && i.status !== 'Closed' && i.status !== 'Withdrawn'
-  ).length;
-
-  const closedIssues = issues.filter((i) => i.status === 'Closed');
   const avgDaysToResolve = useMemo(() => {
     if (closedIssues.length === 0) return '3.5 days';
     const totalDays = closedIssues.reduce((acc, curr) => {
@@ -139,6 +86,60 @@ export default function DashboardPage() {
       };
     });
   }, [roles, users, issues, now]);
+
+  // If unauthenticated or viewer is not President or Admin
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
+        <p className="text-[14px] text-[#64748b]">
+          The central dashboard is reserved for the Student Council President and Administrators.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in as President
+        </Link>
+      </div>
+    );
+  }
+
+  if (!isPresident && !isAdmin) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Access restricted</h1>
+        <p className="text-[14px] text-[#64748b]">
+          The central dashboard is reserved for the Student Council President and Administrators.
+        </p>
+        <Link
+          href="/"
+          className="inline-block bg-gray-100 hover:bg-gray-200 text-[#0f172a] text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors"
+        >
+          Back to all issues
+        </Link>
+      </div>
+    );
+  }
+
+  // 1. Five Numbers in One Row (Section 2)
+  const openCount = issues.filter(
+    (i) => i.status !== 'Closed' && i.status !== 'Withdrawn' && i.status !== 'Rejected'
+  ).length;
+
+  const escalatedCount = issues.filter((i) => i.status.startsWith('Escalated')).length;
+
+  const lateCount = issues.filter((i) => {
+    if (i.status === 'Raised' && new Date(i.ack_deadline).getTime() < now) return true;
+    if (i.status === 'In Progress' && i.next_update_due && new Date(i.next_update_due).getTime() < now) {
+      return true;
+    }
+    return false;
+  }).length;
+
+  const priorityCount = issues.filter(
+    (i) => i.is_priority && i.status !== 'Closed' && i.status !== 'Withdrawn'
+  ).length;
 
   // Run deadline check handler
   const handleRunDeadlineCheck = () => {

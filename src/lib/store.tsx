@@ -249,10 +249,20 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
 
   const setCurrentUser = (user: User | null) => {
     setCurrentUserState(user);
+    if (typeof document !== 'undefined') {
+      if (user) {
+        document.cookie = "betaal_demo_session=1; path=/; max-age=86400; SameSite=Lax";
+      } else {
+        document.cookie = "betaal_demo_session=; path=/; max-age=0";
+      }
+    }
   };
 
   const logout = () => {
     setCurrentUserState(null);
+    if (typeof document !== 'undefined') {
+      document.cookie = "betaal_demo_session=; path=/; max-age=0";
+    }
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {}

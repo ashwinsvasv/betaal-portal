@@ -7,9 +7,7 @@ import { useSunwai } from '@/lib/store';
 import { ALL_HOSTELS, ALL_SECTIONS } from '@/lib/constants';
 import { useTheme } from '@/components/ThemeProvider';
 
-type DemoCategory = 'council' | 'hostel_reps' | 'class_reps' | 'students';
-
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+type DemoCategory = 'council' | 'hostel_reps';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -73,21 +71,15 @@ export default function SignInPage() {
       ? 'Google sign-in did not complete. Try again.'
       : '';
 
-  // Filtered Personas for the Active Tab
+  // Filtered Personas for the Active Tab (No Personal Names, strictly Roles)
   const demoPersonas = useMemo(() => {
     const q = demoSearch.trim().toLowerCase();
 
-    // 1. Executive Council
+    // 1. Executive Council: President, Mess Sec, Infra & IT Sec
     const councilUsers = [
       { userId: 'user-pres', role: 'President', domain: 'Executive Lead' },
-      { userId: 'user-infra', role: 'Infra & IT Secretary', domain: 'Infra & IT' },
       { userId: 'user-mess', role: 'Mess Secretary', domain: 'Mess & Dining' },
-      { userId: 'user-acad', role: 'Academic Secretary', domain: 'Academics' },
-      { userId: 'user-sports', role: 'Sports Secretary', domain: 'Sports' },
-      { userId: 'user-events', role: 'Events Secretary', domain: 'Events' },
-      { userId: 'user-cultural', role: 'Cultural Secretary', domain: 'Cultural' },
-      { userId: 'user-treasurer', role: 'Treasurer', domain: 'Finance' },
-      { userId: 'user-admin', role: 'Student Affairs / Admin', domain: 'Administration' },
+      { userId: 'user-infra', role: 'Infra & IT Secretary', domain: 'Infra & IT' },
     ]
       .map((item) => {
         const u = users.find((user) => user.id === item.userId);
@@ -103,48 +95,19 @@ export default function SignInPage() {
         ? {
             user: u,
             label: `Hostel ${hNum} Representative`,
-            meta: `Hostel ${hNum} · ${u.course} ${u.batch}`,
+            meta: `Hostel ${hNum} Representative`,
           }
         : null;
     }).filter((p): p is { user: typeof users[0]; label: string; meta: string } => Boolean(p));
 
-    // 3. 9 Class Representatives (Sections A to I)
-    const sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
-    const classRepUsers = sections
-      .map((sec) => {
-        const u = users.find((user) => user.id === `user-cr-${sec.toLowerCase()}`);
-        return u
-          ? {
-              user: u,
-              label: `Class Rep (Section ${sec})`,
-              meta: `Section ${sec} · ${u.hostel}`,
-            }
-          : null;
-      })
-      .filter((p): p is { user: typeof users[0]; label: string; meta: string } => Boolean(p));
-
-    // 4. General Students
-    const studentUsers = users
-      .filter((u) => u.id.startsWith('user-stu-'))
-      .map((u) => ({
-        user: u,
-        label: `${u.course} ${u.batch} Student`,
-        meta: `${u.hostel} · ${u.roll_no}`,
-      }));
-
-    let currentList = councilUsers;
-    if (activeTab === 'hostel_reps') currentList = hostelRepUsers;
-    if (activeTab === 'class_reps') currentList = classRepUsers;
-    if (activeTab === 'students') currentList = studentUsers;
+    let currentList = activeTab === 'hostel_reps' ? hostelRepUsers : councilUsers;
 
     if (!q) return currentList;
 
     return currentList.filter(
       (p) =>
-        p.user.name.toLowerCase().includes(q) ||
         p.label.toLowerCase().includes(q) ||
-        p.meta.toLowerCase().includes(q) ||
-        p.user.roll_no.toLowerCase().includes(q)
+        p.meta.toLowerCase().includes(q)
     );
   }, [users, activeTab, demoSearch]);
 
@@ -309,17 +272,16 @@ export default function SignInPage() {
           </div>
 
           {/* Demo Login Window / Categorized Persona Switcher */}
-          {DEMO_MODE && (
           <div className="border-t border-gray-100 pt-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
-                Demo login directory
+                Demo role directory
               </div>
               <span className="text-[11px] text-gray-400">One-click instant login</span>
             </div>
 
-            {/* Segmented Tab Controls */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#f4f6f9] rounded-xl text-[12px] font-medium border border-gray-200/60">
+            {/* Segmented Tab Controls: Council vs Hostel Reps */}
+            <div className="grid grid-cols-2 gap-1 p-1 bg-[#f4f6f9] rounded-xl text-[12px] font-medium border border-gray-200/60">
               <button
                 type="button"
                 onClick={() => {
@@ -332,7 +294,7 @@ export default function SignInPage() {
                     : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
-                Council (9)
+                Council Roles (3)
               </button>
               <button
                 type="button"
@@ -348,34 +310,6 @@ export default function SignInPage() {
               >
                 Hostel Reps (17)
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('class_reps');
-                  setDemoSearch('');
-                }}
-                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
-                  activeTab === 'class_reps'
-                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
-                    : 'text-[#64748b] hover:text-[#0f172a]'
-                }`}
-              >
-                Class Reps (9)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('students');
-                  setDemoSearch('');
-                }}
-                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
-                  activeTab === 'students'
-                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
-                    : 'text-[#64748b] hover:text-[#0f172a]'
-                }`}
-              >
-                Students (20)
-              </button>
             </div>
 
             {/* Search filter */}
@@ -384,7 +318,7 @@ export default function SignInPage() {
                 type="text"
                 value={demoSearch}
                 onChange={(e) => setDemoSearch(e.target.value)}
-                placeholder="Filter by name, hostel, or role..."
+                placeholder="Filter by role, domain, or hostel..."
                 className="w-full bg-white border border-[#dde2ea] text-[13px] px-3 py-1.5 rounded-xl placeholder:text-[#64748b]/70 focus:outline-none focus:border-[#2563eb]"
               />
               {demoSearch && (
@@ -398,11 +332,11 @@ export default function SignInPage() {
               )}
             </div>
 
-            {/* Persona List Window */}
+            {/* Persona List Window - Roles Only, No Personal Names */}
             <div className="max-h-[300px] overflow-y-auto space-y-1.5 pr-1 border border-gray-100 rounded-xl p-1.5 bg-[#fafbfc]">
               {demoPersonas.length === 0 ? (
                 <div className="p-4 text-center text-[12px] text-gray-500">
-                  No accounts match &quot;{demoSearch}&quot; in this category.
+                  No roles match &quot;{demoSearch}&quot; in this category.
                 </div>
               ) : (
                 demoPersonas.map((p) => (
@@ -413,21 +347,19 @@ export default function SignInPage() {
                     className="w-full text-left p-2.5 bg-white rounded-lg border border-gray-200/80 hover:border-[#2563eb] hover:bg-[#eff6ff] transition-all flex items-center justify-between text-[13px] group shadow-2xs"
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-gray-900 truncate flex items-center gap-1.5">
-                        <span>{p.user.name}</span>
-                        <span className="text-[11px] font-normal text-gray-500">({p.label})</span>
+                      <div className="font-semibold text-gray-900 truncate">
+                        {p.label}
                       </div>
                       <div className="text-[11px] text-gray-500 truncate">{p.meta}</div>
                     </div>
                     <span className="text-[12px] text-[#2563eb] font-semibold whitespace-nowrap opacity-90 group-hover:translate-x-0.5 transition-transform">
-                      Sign in →
+                      Try role →
                     </span>
                   </button>
                 ))
               )}
             </div>
           </div>
-          )}
         </div>
       </div>
     </div>

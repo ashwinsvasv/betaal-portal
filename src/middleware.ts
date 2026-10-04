@@ -12,6 +12,10 @@ const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 export async function middleware(req: NextRequest) {
   if (DEMO_MODE) return NextResponse.next();
 
+  // Allow access if active demo persona is selected
+  const isDemo = req.cookies.get('betaal_demo_session')?.value === '1';
+  if (isDemo) return NextResponse.next();
+
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
     const url = req.nextUrl.clone();

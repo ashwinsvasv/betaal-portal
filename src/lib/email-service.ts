@@ -59,7 +59,7 @@ export const EmailTemplates = {
     recipient: ownerRole.inbox_email,
     template: 'issue_raised',
     subject: `[Sunwai] New Issue Raised: ${issue.title}`,
-    body: `Hello ${ownerRole.name},\n\nA new issue has been raised and formally assigned to your office.\n\nIssue Details:\n- Title: ${issue.title}\n- Category: ${issue.category}\n- Scope: ${issue.scope} (${issue.hostel})\n- Raised by: ${raiser.course} ${raiser.batch} Student (${raiser.roll_no})\n- Initial Vote Count: ${issue.vote_count}\n\nMandatory SLA:\nYou have 48 hours to acknowledge this issue.\nDeadline: ${new Date(issue.ack_deadline).toLocaleString('en-IN')}\n\nAccess portal to acknowledge:\nhttps://sunwai.iiml.ac.in/issue/${issue.id}`,
+    body: `Hello ${ownerRole.name},\n\nA new issue has been raised and formally assigned to your office.\n\nIssue Details:\n- Title: ${issue.title}\n- Category: ${issue.category}\n- Scope: ${issue.scope} (${issue.hostel})\n- Raised by: ${raiser.course} ${raiser.batch} Student (${raiser.roll_no})\n- Initial Vote Count: ${issue.vote_count}\n\nMandatory reply deadline:\nYou have 48 hours to acknowledge this issue.\nDeadline: ${new Date(issue.ack_deadline).toLocaleString('en-IN')}\n\nAccess portal to acknowledge:\nhttps://sunwai.iiml.ac.in/issue/${issue.id}`,
     issue_id: issue.id,
   }),
 
@@ -82,7 +82,7 @@ export const EmailTemplates = {
   escalationL1: (issue: Issue, ownerRole: CouncilRole, elapsedHours: number) => ({
     recipient: 'ashwinsvasv+president@gmail.com',
     template: 'escalation_l1',
-    subject: `[Sunwai Escalation L1] SLA Breached by ${ownerRole.name}: ${issue.title}`,
+    subject: `[Sunwai Escalation L1] Reply Deadline Missed by ${ownerRole.name}: ${issue.title}`,
     body: `To: Student Council President\nCc: ${ownerRole.inbox_email}\n\nIssue "${issue.title}" was not acknowledged within the mandatory 48-hour window by ${ownerRole.name}.\n\nTime Waited: ${elapsedHours} hours\nStatus: Escalated L1\nCategory: ${issue.category}\nHostel: ${issue.hostel}\nVotes: ${issue.vote_count}\n\nAs President, you are required to either take direct ownership or reassign this ticket with an expedited timeline:\nhttps://sunwai.iiml.ac.in/president`,
     issue_id: issue.id,
   }),

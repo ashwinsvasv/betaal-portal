@@ -76,7 +76,7 @@ export default function RaiseIssuePage() {
         </div>
         <h1 className="text-[22px] font-serif font-bold text-slate-900">Please sign in</h1>
         <p className="text-[14px] text-slate-600">
-          Sign in with your IIM Lucknow account to raise an issue, attach photos, and receive official SLA updates from your representative.
+          Sign in with your IIM Lucknow account to raise an issue, attach photos, and receive official updates from your representative.
         </p>
         <Link
           href="/signin"
@@ -180,7 +180,7 @@ export default function RaiseIssuePage() {
             2
           </div>
           <span className={`text-[14px] font-bold ${step === 2 ? 'text-slate-900' : 'text-slate-400'}`}>
-            2. Routing & SLA
+            2. Routing & Reply Deadline
           </span>
         </div>
       </div>
@@ -473,7 +473,7 @@ export default function RaiseIssuePage() {
               Check who this goes to
             </h2>
             <p className="text-[14px] text-slate-600">
-              Based on the category and scope, Sunwai assigns this ticket to an official council owner with a strict 48-hour response SLA.
+              Based on the category and scope, Sunwai assigns this ticket to an official council owner with a strict 48-hour reply deadline.
             </p>
           </div>
 

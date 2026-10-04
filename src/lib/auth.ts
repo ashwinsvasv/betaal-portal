@@ -38,7 +38,7 @@ export const googleConfigured = Boolean(
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
   providers: googleConfigured
     ? [
         GoogleProvider({

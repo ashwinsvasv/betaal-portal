@@ -1,5 +1,5 @@
 'use client';
-
+import { formatDateTime } from '@/lib/format-date';
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSunwai } from '@/lib/store';
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-[15px] text-[#5b6478] mt-1">
-            Student Council oversight, escalation queue, and secretariat SLAs.
+            Student Council oversight, escalation queue, and reply deadlines.
           </p>
         </div>
 
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                   <td className="py-2.5 px-4 text-[#16213e]">{item.recipient}</td>
                   <td className="py-2.5 px-4 text-[#5b6478] truncate max-w-xs">{item.subject}</td>
                   <td className="py-2.5 px-4 text-[#5b6478] text-[12px]">
-                    {new Date(item.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    {formatDateTime(item.created_at)}
                   </td>
                   <td className="py-2.5 px-4">
                     <span

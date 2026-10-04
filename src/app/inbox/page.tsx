@@ -16,7 +16,7 @@ export default function MyInboxPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
         <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
         <p className="text-[14px] text-[#64748b]">
-          Sign in with your council account to access your assigned tickets and SLA updates.
+          Sign in with your council account to access your assigned tickets and reply updates.
         </p>
         <Link
           href="/signin"

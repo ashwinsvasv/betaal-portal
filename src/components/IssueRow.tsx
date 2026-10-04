@@ -1,4 +1,5 @@
 'use client';
+import { formatDateTime } from '@/lib/format-date';
 
 import React from 'react';
 import Link from 'next/link';
@@ -182,7 +183,7 @@ export function IssueRow({ issue, showVote = true }: Props) {
             <AccountabilityPill issue={issue} ownerRole={ownerRole} />
             
             <span className="text-[12px] text-slate-500">
-              by <span className="font-medium text-slate-700">{authorDisplay}</span> · {getAgeString()}
+              by <span className="font-medium text-slate-700">{authorDisplay}</span> · {formatDateTime(issue.created_at)} ({getAgeString()})
             </span>
           </div>
 

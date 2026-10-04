@@ -8,6 +8,8 @@ import { ALL_HOSTELS } from '@/lib/constants';
 
 type DemoCategory = 'council' | 'hostel_reps' | 'class_reps' | 'students';
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
 export default function SignInPage() {
   const router = useRouter();
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -272,7 +274,7 @@ export default function SignInPage() {
             )}
             {googleReady === false ? (
               <p className="text-[13px] text-[#9a5506] bg-[#fff3dc] p-3 rounded-xl">
-                Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local, or explore with the demo accounts below.
+                Google sign-in is not configured. Contact the portal administrators.
               </p>
             ) : (
               <button
@@ -289,6 +291,7 @@ export default function SignInPage() {
           </div>
 
           {/* Demo Login Window / Categorized Persona Switcher */}
+          {DEMO_MODE && (
           <div className="border-t border-gray-100 pt-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -406,6 +409,7 @@ export default function SignInPage() {
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

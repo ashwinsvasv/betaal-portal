@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { signOut } from 'next-auth/react';
 import {
   User,
   CouncilRole,
@@ -238,9 +239,10 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {}
-    if (typeof window !== 'undefined') {
-      window.location.href = '/signin';
-    }
+    // End the server-side (Google/NextAuth) session cookie too, otherwise the user is silently logged back in.
+    signOut({ callbackUrl: '/signin' }).catch(() => {
+      if (typeof window !== 'undefined') window.location.href = '/signin';
+    });
   };
 
   const getUserRole = (userId?: string) => {

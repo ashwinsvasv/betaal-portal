@@ -1,4 +1,5 @@
 'use client';
+import { formatDateTime } from '@/lib/format-date';
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -344,7 +345,7 @@ export default function IssueDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
         {/* Left: Main Content */}
         <div className="space-y-6">
-          {/* Header Card: Meta, Title, SLA Pill & Stepper */}
+          {/* Header Card: Meta, Title, Deadline Pill & Stepper */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 space-y-6 shadow-xs">
             {/* Top Badges */}
             <div className="flex items-center gap-2 flex-wrap text-[12px]">
@@ -380,6 +381,7 @@ export default function IssueDetailPage() {
               <AccountabilityPill issue={issue} ownerRole={ownerRole} />
               <span className="text-[13px] text-slate-500">
                 Raised by <span className="font-medium text-slate-700">{authorDisplay}</span>
+                {' '}on <span className="font-medium text-slate-700">{formatDateTime(issue.created_at)}</span>
               </span>
             </div>
 
@@ -392,7 +394,7 @@ export default function IssueDetailPage() {
                 {[
                   { num: 1, label: 'Raised', desc: '48h Clock' },
                   { num: 2, label: 'Acknowledged', desc: 'Assigned' },
-                  { num: 3, label: 'In Progress', desc: 'Weekly SLA' },
+                  { num: 3, label: 'In Progress', desc: 'Weekly update' },
                   { num: 4, label: 'Resolved', desc: 'Verified' },
                 ].map((st) => {
                   const state = getStepState(st.num);
@@ -469,7 +471,7 @@ export default function IssueDetailPage() {
               </div>
               <div>
                 <label className="block text-[13px] text-slate-600 mb-1">
-                  Official note to student (starts SLA tracking)
+                  Official note to student (starts the reply clock)
                 </label>
                 <textarea
                   rows={2}
@@ -620,7 +622,7 @@ export default function IssueDetailPage() {
           <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4 shadow-xs">
             <h2 className="text-[17px] font-serif font-bold text-slate-900 flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-500" />
-              <span>Official Timeline & SLA Updates</span>
+              <span>Official Timeline & Updates</span>
             </h2>
 
             {issueUpdates.length === 0 ? (
@@ -638,7 +640,7 @@ export default function IssueDetailPage() {
                       <div className="text-[12px] text-slate-500 flex items-center gap-1.5">
                         <span className="font-semibold text-slate-800">{actorName}</span>
                         <span>·</span>
-                        <span>{new Date(upd.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{formatDateTime(upd.created_at)}</span>
                       </div>
                       <p className="text-[14px] text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-200/60 leading-relaxed">
                         {upd.note}
@@ -692,7 +694,7 @@ export default function IssueDetailPage() {
                     <div key={c.id} className="py-3.5 space-y-1 text-[14px]">
                       <div className="flex items-center justify-between text-[12px] text-slate-500">
                         <span className="font-semibold text-slate-800">{authorLabel}</span>
-                        <span>{new Date(c.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>
+                        <span>{formatDateTime(c.created_at)}</span>
                       </div>
                       <p className="text-slate-800 whitespace-pre-line leading-relaxed">{c.body}</p>
                     </div>
@@ -709,7 +711,7 @@ export default function IssueDetailPage() {
             {/* Responsible Council Member */}
             <div className="space-y-1">
               <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-                Assigned SLA Owner
+                Person Responsible
               </div>
               <div className="font-bold text-slate-900 text-[15px] flex items-center gap-1.5">
                 <User className="w-4 h-4 text-blue-600 shrink-0" />

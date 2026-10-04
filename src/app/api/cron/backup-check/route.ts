@@ -1,10 +1,13 @@
+import { requireCronAuth } from '@/lib/cron-auth';
 import { NextResponse } from 'next/server';
 
 /**
  * Nightly automated backup verification (Runs at 02:00 UTC)
  * Checks that the pg_dump snapshot exists, has non-zero size, and was generated within the last 25 hours.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const denied = requireCronAuth(request);
+  if (denied) return denied;
   const simulatedBackup = {
     filename: `sunwai-backup-${new Date().toISOString().slice(0, 10)}.sql.gz`,
     last_modified: new Date(Date.now() - 3.5 * 3600 * 1000).toISOString(),
@@ -33,13 +36,13 @@ export async function POST() {
     },
     retention_days: 30,
     message: passed
-      ? 'Daily backup verified: non-zero, valid snapshot created within SLA (<25h).'
+      ? 'Daily backup verified: non-zero, valid snapshot created within 25 hours.'
       : 'ALERT: Daily backup check failed or is outdated. Tech committee alerted.',
   };
 
   return NextResponse.json(report, { status: passed ? 200 : 500 });
 }
 
-export async function GET() {
-  return POST();
+export async function GET(request: Request) {
+  return POST(request);
 }

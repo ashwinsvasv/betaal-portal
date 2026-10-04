@@ -61,7 +61,7 @@ export function runComprehensiveDeadlineCheck(
           actor_id: 'system',
           from_status: 'Raised',
           to_status: 'Escalated L1',
-          note: `System SLA Monitor: 48-hour acknowledgment deadline missed (${elapsedHours}h unaddressed). Auto-escalated to President.`,
+          note: `Deadline Monitor: 48-hour acknowledgment deadline missed (${elapsedHours}h unaddressed). Auto-escalated to President.`,
           created_at: nowIso,
         };
         newStatusUpdates.push(update);
@@ -128,7 +128,7 @@ export function runComprehensiveDeadlineCheck(
           actor_id: 'system',
           from_status: 'Escalated L1',
           to_status: 'Escalated L2',
-          note: `System SLA Monitor: 48-hour Presidential action window passed. Auto-escalated to Student Affairs (Escalated L2).`,
+          note: `Deadline Monitor: 48-hour Presidential action window passed. Auto-escalated to Student Affairs (Escalated L2).`,
           created_at: nowIso,
         };
         newStatusUpdates.push(update);
@@ -140,7 +140,7 @@ export function runComprehensiveDeadlineCheck(
       }
     }
 
-    // 3. In Progress issues: Weekly update SLA (7 days due, +3 days escalation)
+    // 3. In Progress issues: Weekly update deadline (7 days due, +3 days escalation)
     if (modified.status === 'In Progress' && modified.next_update_due) {
       const nextUpdateDueTime = new Date(modified.next_update_due).getTime();
       const pastDueMs = nowTime - nextUpdateDueTime;
@@ -217,7 +217,7 @@ export function runComprehensiveDeadlineCheck(
     priorityEscalatedCount,
     updateBreachesCount,
     autoClosedCount,
-    logs: logs.length > 0 ? logs : ['All active issues are within their respective response SLA windows.'],
+    logs: logs.length > 0 ? logs : ['All active issues are within their respective reply deadlines.'],
   };
 
   return {

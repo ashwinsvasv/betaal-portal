@@ -1,11 +1,14 @@
+import { requireCronAuth } from '@/lib/cron-auth';
 import { NextResponse } from 'next/server';
 import { runComprehensiveDeadlineCheck } from '@/lib/deadline-checker';
 import { SEED_ISSUES, SEED_ROLES } from '@/lib/seed-data';
 
 export async function GET(request: Request) {
+  const denied = requireCronAuth(request);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
-    const offsetHours = Number(searchParams.get('offsetHours') || 0);
+    const offsetHours = process.env.NODE_ENV === 'production' ? 0 : Number(searchParams.get('offsetHours') || 0);
 
     const result = runComprehensiveDeadlineCheck({
       issues: SEED_ISSUES,

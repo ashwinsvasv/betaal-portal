@@ -35,7 +35,7 @@ function AllIssuesContent() {
   const [selectedCategory, setSelectedCategory] = useState<'All' | IssueCategory>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Open' | 'PendingAck' | 'InProgress' | 'Priority' | 'Resolved'>('Open');
   const [scopeFilter, setScopeFilter] = useState<'All' | 'MyHostel' | 'WholeCampus'>('All');
-  const [sortFilter, setSortFilter] = useState<'Most votes' | 'Newest' | 'Urgent SLA'>('Most votes');
+  const [sortFilter, setSortFilter] = useState<'Most votes' | 'Newest' | 'Deadline soonest'>('Most votes');
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
 
   useEffect(() => {
@@ -224,7 +224,7 @@ function AllIssuesContent() {
         if (sortFilter === 'Most votes') {
           return b.vote_count - a.vote_count;
         }
-        if (sortFilter === 'Urgent SLA') {
+        if (sortFilter === 'Deadline soonest') {
           const aAck = new Date(a.ack_deadline).getTime();
           const bAck = new Date(b.ack_deadline).getTime();
           return aAck - bAck;
@@ -275,7 +275,7 @@ function AllIssuesContent() {
                 <span className="text-[12px] text-slate-400 font-medium ml-2">· IIM Lucknow</span>
               </div>
               <p className="text-[13px] sm:text-[14px] text-slate-600 leading-relaxed font-medium">
-                Betaal keeps the Student Council accountable. Raise an issue, track the 48h reply SLA, and watch every step in the open until it&apos;s done.
+                Betaal keeps the Student Council accountable. Raise an issue, track the 48h reply deadline, and watch every step in the open until it&apos;s done.
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ function AllIssuesContent() {
           >
             <div className="flex items-center justify-between">
               <span className={`text-[12px] font-medium ${statusFilter === 'PendingAck' ? 'text-amber-100' : 'text-slate-500'}`}>
-                Pending SLA
+                Awaiting Reply
               </span>
               <AlertTriangle className={`w-4 h-4 ${statusFilter === 'PendingAck' ? 'text-white' : 'text-amber-600'}`} />
             </div>
@@ -527,7 +527,7 @@ function AllIssuesContent() {
             >
               <option value="Most votes">Most votes</option>
               <option value="Newest">Newest first</option>
-              <option value="Urgent SLA">Urgent SLA</option>
+              <option value="Deadline soonest">Deadline soonest</option>
             </select>
 
             {/* View Mode Switcher */}

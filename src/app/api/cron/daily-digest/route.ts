@@ -1,8 +1,11 @@
+import { requireCronAuth } from '@/lib/cron-auth';
 import { NextResponse } from 'next/server';
 import { generateDailyDigests } from '@/lib/deadline-checker';
 import { SEED_ISSUES, SEED_ROLES } from '@/lib/seed-data';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = requireCronAuth(request);
+  if (denied) return denied;
   try {
     const digests = generateDailyDigests(SEED_ISSUES, SEED_ROLES);
 

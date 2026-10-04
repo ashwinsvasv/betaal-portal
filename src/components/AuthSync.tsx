@@ -20,6 +20,9 @@ export function AuthSync() {
   useEffect(() => {
     if (status !== 'authenticated') {
       syncedEmail.current = null;
+      if (status === 'unauthenticated' && currentUser && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+        setCurrentUser(null);
+      }
       return;
     }
     const email = session?.user?.email?.toLowerCase();
@@ -48,7 +51,7 @@ export function AuthSync() {
       is_active: true,
     });
     setCurrentUser(created);
-  }, [status, session, users, setCurrentUser, createUser]);
+  }, [status, session, users, currentUser, setCurrentUser, createUser]);
 
   // Profile incomplete: keep the user on the one-time setup screen.
   useEffect(() => {

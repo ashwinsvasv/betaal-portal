@@ -28,7 +28,7 @@ export default function MyIssuesPage() {
         </div>
         <h1 className="text-[22px] font-serif font-bold text-slate-900">Please sign in</h1>
         <p className="text-[14px] text-slate-600">
-          Sign in with your IIM Lucknow account to track issues you have raised, check SLA deadlines, and follow issues you upvoted.
+          Sign in with your IIM Lucknow account to track issues you have raised, check reply deadlines, and follow issues you upvoted.
         </p>
         <Link
           href="/signin"

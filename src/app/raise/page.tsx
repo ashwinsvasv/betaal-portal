@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useSunwai } from '@/lib/store';
 import { IssueCategory, IssueScope, IssueVisibility } from '@/types';
 import { determineSuggestedOwner } from '@/lib/routing';
+import { findSimilarIssues } from '@/lib/duplicate-detector';
 import Link from 'next/link';
 
 export default function RaiseIssuePage() {
   const router = useRouter();
-  const { currentUser, roles, raiseIssue } = useSunwai();
+  const { currentUser, roles, issues, userVotes, upvoteIssue, raiseIssue } = useSunwai();
 
   // Step 1 or Step 2
   const [step, setStep] = useState<1 | 2>(1);
@@ -22,6 +23,21 @@ export default function RaiseIssuePage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<IssueVisibility>('public');
   const [error, setError] = useState('');
+  const [dismissDuplicates, setDismissDuplicates] = useState(false);
+
+  // Real-time Duplicate Detection
+  const similarIssues = useMemo(() => {
+    if (dismissDuplicates) return [];
+    return findSimilarIssues({
+      title,
+      details,
+      category,
+      scope,
+      hostel: currentUser.hostel,
+      issues,
+      minScore: 0.22,
+    });
+  }, [title, details, category, scope, currentUser.hostel, issues, dismissDuplicates]);
 
   // Routing suggestion for Step 2
   const routing = useMemo(() => {
@@ -108,13 +124,13 @@ export default function RaiseIssuePage() {
   };
 
   return (
-    <div className="max-w-[700px] mx-auto space-y-6">
+    <div className="max-w-[720px] mx-auto space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-[30px] font-serif text-[#16213e] leading-tight">
+        <h1 className="text-[30px] font-serif text-[#0f172a] font-bold leading-tight">
           Raise an issue
         </h1>
-        <p className="text-[15px] text-[#5b6478] mt-1">
+        <p className="text-[15px] text-[#64748b] mt-1">
           {step === 1
             ? 'Step 1 of 2: Describe the problem on campus.'
             : 'Step 2 of 2: Check who this goes to.'}
@@ -122,38 +138,126 @@ export default function RaiseIssuePage() {
       </div>
 
       {error && (
-        <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3 rounded-[8px]">
+        <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3.5 rounded-xl">
           {error}
         </div>
       )}
 
       {/* Step 1: The Form */}
       {step === 1 && (
-        <form onSubmit={handleProceedToStep2} className="bg-white rounded-[12px] border border-[#dde2ea] p-6 sm:p-8 space-y-5">
+        <form onSubmit={handleProceedToStep2} className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 space-y-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
           {/* Issue Title */}
           <div>
-            <label className="block text-[14px] font-medium text-[#16213e] mb-1.5">
+            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
               Title
             </label>
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setDismissDuplicates(false);
+              }}
               placeholder="e.g. Wi-Fi router on 2nd floor Hostel 3 keeps dropping"
-              className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[15px] px-3.5 py-2.5 rounded-[8px] transition-colors"
+              className="w-full bg-white border border-[#dde2ea] text-[#16213e] placeholder-gray-400 text-[15px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
             />
           </div>
+
+          {/* Real-Time Duplicate Detection Panel */}
+          {similarIssues.length > 0 && (
+            <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[13px] font-bold text-[#1d4ed8]">
+                  <span className="text-base">💡</span>
+                  <span>Similar open issues already reported on campus ({similarIssues.length})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDismissDuplicates(true)}
+                  className="text-[11px] text-gray-400 hover:text-gray-700 underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="text-[12px] text-[#1e40af]">
+                Upvoting an existing issue combines student demand to reach the <strong>10% Priority threshold</strong> faster.
+              </p>
+
+              <div className="space-y-2">
+                {similarIssues.map((match) => {
+                  const isVoted = userVotes.has(match.issue.id);
+                  const issueNum = match.issue.id.replace('issue-', '').slice(-4);
+                  const matchPercent = Math.round(match.similarityScore * 100);
+
+                  return (
+                    <div
+                      key={match.issue.id}
+                      className="bg-white rounded-lg p-3 border border-[#dbeafe] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-[#93c5fd] transition-all"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-0.5 flex-wrap">
+                          <span className="font-mono font-bold text-gray-700">#{issueNum}</span>
+                          <span>·</span>
+                          <span>{match.issue.category}</span>
+                          <span>·</span>
+                          <span>
+                            {match.issue.scope === 'whole campus' ? 'Whole campus' : match.issue.hostel}
+                          </span>
+                          <span className="bg-[#dbeafe] text-[#1e40af] px-1.5 py-0.5 rounded text-[10px] font-bold">
+                            {matchPercent}% match
+                          </span>
+                        </div>
+                        <div className="font-semibold text-[14px] text-[#0f172a] line-clamp-1">
+                          {match.issue.title}
+                        </div>
+                        <div className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
+                          {match.issue.details}
+                        </div>
+                      </div>
+
+                      {/* Action: Upvote / View */}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => upvoteIssue(match.issue.id)}
+                          className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all ${
+                            isVoted
+                              ? 'bg-[#dbeafe] text-[#1d4ed8] border border-[#93c5fd]'
+                              : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs'
+                          }`}
+                        >
+                          <span>▲</span>
+                          <span>{isVoted ? 'Voted' : 'Upvote instead'}</span>
+                          <span className="text-[11px] opacity-80 font-normal">
+                            ({match.issue.vote_count})
+                          </span>
+                        </button>
+
+                        <Link
+                          href={`/issue/${match.issue.id}`}
+                          target="_blank"
+                          className="text-[12px] text-gray-600 hover:text-[#2563eb] font-medium underline px-1 py-1"
+                        >
+                          View ↗
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Category & Scope */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[14px] font-medium text-[#16213e] mb-1.5">
+              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as IssueCategory)}
-                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3 py-2 rounded-[8px] transition-colors"
+                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
               >
                 <option value="Infra & IT">Infra & IT</option>
                 <option value="Hostel life">Hostel life</option>
@@ -168,13 +272,13 @@ export default function RaiseIssuePage() {
             </div>
 
             <div>
-              <label className="block text-[14px] font-medium text-[#16213e] mb-1.5">
+              <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
                 Scope
               </label>
               <select
                 value={scope}
                 onChange={(e) => setScope(e.target.value as IssueScope)}
-                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3 py-2 rounded-[8px] transition-colors"
+                className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[14px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
               >
                 <option value="my room">My room ({currentUser.hostel})</option>
                 <option value="my hostel">My hostel ({currentUser.hostel})</option>
@@ -185,7 +289,7 @@ export default function RaiseIssuePage() {
 
           {/* Details */}
           <div>
-            <label className="block text-[14px] font-medium text-[#16213e] mb-1.5">
+            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
               Details
             </label>
             <textarea
@@ -193,18 +297,18 @@ export default function RaiseIssuePage() {
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               placeholder="Describe the exact location, when it started, and how it affects students..."
-              className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[15px] px-3.5 py-2.5 rounded-[8px] transition-colors"
+              className="w-full bg-white border border-[#dde2ea] text-[#16213e] text-[15px] px-3.5 py-2.5 rounded-xl focus:border-[#2563eb] transition-colors shadow-xs"
             />
           </div>
 
           {/* Photos (optional) */}
           <div>
-            <label className="block text-[14px] font-medium text-[#16213e] mb-1.5">
+            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
               Photos (optional, up to 3)
             </label>
             <div className="flex items-center gap-3 flex-wrap">
               {photos.map((p, idx) => (
-                <div key={idx} className="relative w-20 h-20 rounded-[8px] overflow-hidden border border-[#dde2ea]">
+                <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#dde2ea] shadow-xs">
                   <img src={p} alt="Upload" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -216,7 +320,7 @@ export default function RaiseIssuePage() {
                 </div>
               ))}
               {photos.length < 3 && (
-                <label className="w-20 h-20 rounded-[8px] border border-dashed border-[#dde2ea] hover:border-[#2f45c5] flex flex-col items-center justify-center cursor-pointer text-[12px] text-[#5b6478] bg-[#f4f6f9] transition-colors">
+                <label className="w-20 h-20 rounded-xl border border-dashed border-[#dde2ea] hover:border-[#2563eb] flex flex-col items-center justify-center cursor-pointer text-[12px] text-[#64748b] bg-[#f8fafc] transition-colors">
                   <span>+ Add photo</span>
                   <input
                     type="file"
@@ -230,16 +334,16 @@ export default function RaiseIssuePage() {
           </div>
 
           {/* Visibility */}
-          <div className="border-t border-[#dde2ea] pt-4">
-            <label className="block text-[14px] font-medium text-[#16213e] mb-2">
+          <div className="border-t border-gray-100 pt-4">
+            <label className="block text-[14px] font-semibold text-[#0f172a] mb-2">
               Visibility
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[14px]">
               <label
-                className={`p-3 rounded-[8px] border cursor-pointer flex items-start gap-2.5 ${
+                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
                   visibility === 'public'
-                    ? 'border-[#2f45c5] bg-[#eaedfb]/30'
-                    : 'border-[#dde2ea]'
+                    ? 'border-[#2563eb] bg-[#eff6ff]'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <input
@@ -251,18 +355,18 @@ export default function RaiseIssuePage() {
                   className="mt-0.5"
                 />
                 <div>
-                  <div className="font-medium text-[#16213e]">Public</div>
-                  <div className="text-[12px] text-[#5b6478] mt-0.5">
+                  <div className="font-semibold text-[#0f172a]">Public</div>
+                  <div className="text-[12px] text-[#64748b] mt-0.5">
                     Visible to all campus students. Can receive upvotes.
                   </div>
                 </div>
               </label>
 
               <label
-                className={`p-3 rounded-[8px] border cursor-pointer flex items-start gap-2.5 ${
+                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
                   visibility === 'private'
-                    ? 'border-[#2f45c5] bg-[#eaedfb]/30'
-                    : 'border-[#dde2ea]'
+                    ? 'border-[#2563eb] bg-[#eff6ff]'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <input
@@ -274,8 +378,8 @@ export default function RaiseIssuePage() {
                   className="mt-0.5"
                 />
                 <div>
-                  <div className="font-medium text-[#16213e]">Private</div>
-                  <div className="text-[12px] text-[#5b6478] mt-0.5">
+                  <div className="font-semibold text-[#0f172a]">Private</div>
+                  <div className="text-[12px] text-[#64748b] mt-0.5">
                     Visible only to you, the assigned owner, and the President.
                   </div>
                 </div>
@@ -284,15 +388,15 @@ export default function RaiseIssuePage() {
           </div>
 
           {/* Next Button */}
-          <div className="pt-2 flex items-center justify-between">
-            <Link href="/" className="text-[14px] text-[#5b6478] hover:text-[#16213e]">
+          <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+            <Link href="/" className="text-[14px] text-[#64748b] hover:text-[#0f172a]">
               Cancel
             </Link>
             <button
               type="submit"
-              className="bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-5 py-2.5 rounded-[8px] transition-colors"
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-xs"
             >
-              Next: Check who this goes to
+              Next: Check who this goes to →
             </button>
           </div>
         </form>
@@ -300,46 +404,45 @@ export default function RaiseIssuePage() {
 
       {/* Step 2: Check who this goes to */}
       {step === 2 && (
-        <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 sm:p-8 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 space-y-6 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
           <div className="space-y-1">
-            <h2 className="text-[20px] font-serif text-[#16213e]">
+            <h2 className="text-[22px] font-serif text-[#0f172a] font-bold">
               Check who this goes to
             </h2>
-            <p className="text-[14px] text-[#5b6478]">
-              Based on the category and scope, Sunwai assigns this ticket to an official council owner with a 48-hour response clock.
+            <p className="text-[14px] text-[#64748b]">
+              Based on the category and scope, Sunwai assigns this ticket to an official council owner with a strict 48-hour response SLA.
             </p>
           </div>
 
           {/* Assigned Owner Box */}
-          <div className="bg-[#f4f6f9] rounded-[8px] p-5 border border-[#dde2ea] space-y-3 text-[14px]">
+          <div className="bg-[#f8fafc] rounded-xl p-5 border border-gray-200 space-y-3 text-[14px]">
             <div className="flex items-center justify-between">
-              <span className="text-[#5b6478]">Assigned owner:</span>
-              <span className="font-semibold text-[#16213e]">
+              <span className="text-[#64748b]">Assigned owner:</span>
+              <span className="font-bold text-[#0f172a]">
                 {routing.ownerRoleName}
               </span>
             </div>
 
             {routing.ccRoleNames.length > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-[#5b6478]">Copied:</span>
-                <span className="text-[#16213e]">
+                <span className="text-[#64748b]">Copied:</span>
+                <span className="text-[#0f172a] font-medium">
                   {routing.ccRoleNames.join(', ')}
                 </span>
               </div>
             )}
 
-            <div className="text-[13px] text-[#5b6478] border-t border-[#dde2ea] pt-2">
+            <div className="text-[13px] text-[#64748b] border-t border-gray-200 pt-2">
               {routing.reason}
             </div>
           </div>
 
-          {/* Action Buttons: Section 2 requirement:
-              "two buttons: 'Send to <owner>' and 'Not sure, send to the President'" */}
+          {/* Action Buttons */}
           <div className="space-y-3 pt-2">
             <button
               type="button"
               onClick={() => handleFinalSubmit(false)}
-              className="w-full bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[15px] font-medium py-3 px-4 rounded-[8px] transition-colors text-center"
+              className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[15px] font-semibold py-3 px-4 rounded-xl transition-all text-center shadow-xs"
             >
               Send to {routing.ownerRoleName}
             </button>
@@ -347,7 +450,7 @@ export default function RaiseIssuePage() {
             <button
               type="button"
               onClick={() => handleFinalSubmit(true)}
-              className="w-full bg-white hover:bg-[#f4f6f9] border border-[#dde2ea] text-[#16213e] text-[14px] font-medium py-2.5 px-4 rounded-[8px] transition-colors text-center"
+              className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#0f172a] text-[14px] font-semibold py-2.5 px-4 rounded-xl transition-colors text-center"
             >
               Not sure, send to the President
             </button>
@@ -357,7 +460,7 @@ export default function RaiseIssuePage() {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="text-[13px] text-[#5b6478] hover:text-[#16213e] underline"
+              className="text-[13px] text-[#64748b] hover:text-[#0f172a] underline"
             >
               ← Back to edit issue
             </button>

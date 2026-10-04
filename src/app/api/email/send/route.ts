@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     });
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || `Sunwai <${process.env.SMTP_USER}>`,
+      from: process.env.EMAIL_FROM || `Betaal <${process.env.SMTP_USER}>`,
       to,
       subject: finalSubject,
       text: body,

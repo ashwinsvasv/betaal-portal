@@ -361,8 +361,8 @@ export default function DashboardPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       recipient: 'ashwinsvasv+president@gmail.com',
-                      subject: '[Sunwai] Test email',
-                      body: 'This is a test message from the Sunwai dashboard.',
+                      subject: '[Betaal] Test email',
+                      body: 'This is a test message from the Betaal dashboard.',
                     }),
                   });
                   const data = await res.json();

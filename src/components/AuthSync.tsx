@@ -7,7 +7,7 @@ import { useSunwai } from '@/lib/store';
 import { parseRollNumber } from '@/lib/student-upload';
 
 /**
- * Links the Google session to a Sunwai user (once per sign-in) and sends brand-new
+ * Links the Google session to a Betaal user (once per sign-in) and sends brand-new
  * users to the one-time "pick your hostel" step on /signin.
  */
 export function AuthSync() {

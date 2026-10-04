@@ -647,7 +647,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         student.email,
         'issue_acknowledged',
-        `[Sunwai] Your issue has been acknowledged: ${target.title}`,
+        `[Betaal] Your issue has been acknowledged: ${target.title}`,
         `Your issue "${target.title}" was acknowledged by ${currentUser.name} (${userRole?.name || 'Owner'}).\n\nNote: ${note}`,
         issueId
       );
@@ -693,7 +693,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         student.email,
         'status_in_progress',
-        `[Sunwai] Work started on your issue: ${target.title}`,
+        `[Betaal] Work started on your issue: ${target.title}`,
         `The owner has moved "${target.title}" to In Progress.\n\nNote: ${note}\nNext weekly update due in 7 days.`,
         issueId
       );
@@ -739,7 +739,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         student.email,
         'progress_update',
-        `[Sunwai] Progress update on: ${target.title}`,
+        `[Betaal] Progress update on: ${target.title}`,
         `An update was posted for "${target.title}":\n\n${note}`,
         issueId
       );
@@ -783,7 +783,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         student.email,
         'issue_completed',
-        `[Sunwai] Issue Completed: ${target.title}`,
+        `[Betaal] Issue Completed: ${target.title}`,
         `Your issue has been marked Completed by ${userRole?.name || 'the owner'}.\n\nResolution details: ${note}\n\nYou have 7 days to confirm this resolution or reopen the issue if it is not fixed.`,
         issueId
       );
@@ -827,7 +827,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         student.email,
         'issue_rejected',
-        `[Sunwai] Issue Rejected: ${target.title}`,
+        `[Betaal] Issue Rejected: ${target.title}`,
         `Your issue was rejected by ${userRole?.name || 'the owner'}.\nReason: ${reason}\nDetails: ${note}`,
         issueId
       );
@@ -895,7 +895,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       sendEmail(
         newRole.inbox_email,
         'issue_redirected',
-        `[Sunwai Redirect #${nextRedirectCount}] Issue reassigned to you: ${target.title}`,
+        `[Betaal Redirect #${nextRedirectCount}] Issue reassigned to you: ${target.title}`,
         `Issue "${target.title}" was redirected to your role by ${oldRole?.name}.\nReason: ${reason}\nNew 48h acknowledgment deadline: ${new Date(newAckDeadline).toLocaleString('en-IN')}`,
         issueId
       );
@@ -983,7 +983,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       const email = createEmailItem({
         recipient: ownerRole.inbox_email,
         template: 'issue_reopened',
-        subject: `[Sunwai Reopened] Issue reopened by student: ${target.title}`,
+        subject: `[Betaal Reopened] Issue reopened by student: ${target.title}`,
         body: `The student has reopened issue "${target.title}" stating:\n\n"${reason}"\n\nPlease re-inspect and update progress.`,
         issue_id: issueId,
       });

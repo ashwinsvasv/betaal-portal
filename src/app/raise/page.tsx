@@ -475,7 +475,7 @@ export default function RaiseIssuePage() {
               Check who this goes to
             </h2>
             <p className="text-[14px] text-slate-600">
-              Based on the category and scope, Sunwai assigns this ticket to an official council owner with a strict 48-hour reply deadline.
+              Based on the category and scope, Betaal assigns this ticket to an official council owner with a strict 48-hour reply deadline.
             </p>
           </div>
 

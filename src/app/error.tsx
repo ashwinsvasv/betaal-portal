@@ -12,7 +12,7 @@ export default function ErrorBoundary({
 }) {
   useEffect(() => {
     // Log unexpected runtime error to monitoring service
-    console.error('Unhandled Sunwai runtime error:', error);
+    console.error('Unhandled Betaal runtime error:', error);
   }, [error]);
 
   return (

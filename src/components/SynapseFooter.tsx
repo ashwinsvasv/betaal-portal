@@ -76,7 +76,7 @@ export function SynapseFooter() {
             <span className="text-gray-600">|</span>
             <span className="hover:text-white transition-colors cursor-pointer">Stex</span>
             <span className="text-gray-600">|</span>
-            <span className="text-[#38bdf8] font-bold">Sunwai</span>
+            <span className="text-[#38bdf8] font-bold">Betaal</span>
           </div>
 
           {/* Social Links: LinkedIn & Instagram */}

@@ -9,7 +9,7 @@ test.describe('Student User Journeys', () => {
   test('Journey 1.1 - 1.3: Sign in, Duplicate Check, Upvote Instead & 2-Step Issue Creation', async ({ page }) => {
     // 1. Visit Sign-in Page
     await page.goto('/signin');
-    await expect(page).toHaveTitle(/Sunwai/);
+    await expect(page).toHaveTitle(/Betaal/);
 
     // 2. Select Demo Student Persona (Rahul Sharma - H3, PGP41)
     const studentTab = page.locator('button:has-text("Students (20)")');

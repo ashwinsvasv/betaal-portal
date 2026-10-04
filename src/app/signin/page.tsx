@@ -212,25 +212,50 @@ export default function SignInPage() {
   return (
     <div className="py-8 sm:py-12">
       <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-10 max-w-[960px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-8 lg:gap-12 items-start shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-        {/* Left: Headline & Statement */}
-        <div className="space-y-4 lg:sticky lg:top-24">
-          <div className="text-[13px] font-semibold text-[#2563eb] uppercase tracking-wide">
-            Sunwai · IIM Lucknow
+        {/* Left: Headline, Logo & Purpose Brief */}
+        <div className="space-y-5 lg:sticky lg:top-24">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="Betaal Logo"
+              className="w-12 h-16 object-contain drop-shadow-xs"
+            />
+            <div className="flex items-baseline">
+              <span className="text-[32px] font-bold text-slate-900 font-brand">
+                Betaal
+              </span>
+              <span className="text-[24px] font-black text-rose-600 ml-1.5 font-brand">
+                1.0
+              </span>
+            </div>
           </div>
-          <h1 className="text-[32px] font-serif text-[#0f172a] font-bold leading-tight">
-            Raise it once. Someone owns it. They have 48 hours.
-          </h1>
-          <p className="text-[15px] text-[#64748b] leading-relaxed">
-            Every complaint at IIM Lucknow is given an official council owner, a clear deadline, and a public status so nothing falls through the cracks.
-          </p>
 
-          <div className="pt-4 border-t border-gray-100 space-y-2 text-[13px] text-[#64748b]">
+          <h1 className="text-[26px] sm:text-[28px] font-bold text-slate-900 leading-tight">
+            Betaal keeps the Student Council accountable.
+          </h1>
+
+          <div className="space-y-2.5 text-[14px] text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+            <div className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>Raise an issue, and it goes to the person whose job it is to fix it.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-amber-600 font-bold">•</span>
+              <span>They have 48 hours to reply, or it goes up the chain.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-600 font-bold">•</span>
+              <span>Vote for what matters, and watch every step in the open until it&apos;s done.</span>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100 space-y-2 text-[12px] text-slate-500">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#17734a]" />
+              <span className="w-2 h-2 rounded-full bg-emerald-600" />
               <span>Full council coverage: 8 portfolios, 17 Hostels, 9 Sections.</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#2563eb]" />
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
               <span>Instant demo access to test any stakeholder view.</span>
             </div>
           </div>

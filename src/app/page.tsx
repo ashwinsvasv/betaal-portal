@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   Lock,
   ArrowRight,
+  Vote,
+  Check,
 } from 'lucide-react';
 
 function AllIssuesContent() {
@@ -49,22 +51,46 @@ function AllIssuesContent() {
   if (!currentUser) {
     return (
       <div className="space-y-8 py-4">
-        {/* Hero Gate Banner */}
+        {/* Hero Gate Banner with Betaal Logo and Indian styled font */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center space-y-6 shadow-sm max-w-2xl mx-auto">
-          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xs">
-            <Lock className="w-7 h-7" />
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <img
+              src="/logo.png"
+              alt="Betaal Logo"
+              className="w-20 h-24 sm:w-24 sm:h-28 object-contain drop-shadow-md"
+            />
+            <div className="flex items-baseline justify-center">
+              <span className="text-[36px] sm:text-[42px] font-bold tracking-tight text-slate-900 font-brand">
+                Betaal
+              </span>
+              <span className="text-[28px] sm:text-[32px] font-black text-rose-600 ml-1.5 font-brand">
+                1.0
+              </span>
+            </div>
+            <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
+              IIM Lucknow Student Council Grievance Portal
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 uppercase tracking-wider">
-              <span>IIM Lucknow Student Council</span>
-            </div>
-            <h1 className="text-[28px] sm:text-[34px] font-bold text-slate-900 tracking-tight leading-tight">
-              Sunwai 1.0 Grievance Portal
-            </h1>
-            <p className="text-[14px] sm:text-[15px] text-slate-600 max-w-lg mx-auto leading-relaxed">
-              Every campus grievance has an assigned owner, strict 48-hour SLA response clock, and transparent progress updates. Sign in with your official account to browse and raise issues.
+          {/* Purpose Brief */}
+          <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 text-left space-y-3">
+            <p className="text-[16px] font-bold text-slate-900 leading-snug">
+              Betaal keeps the Student Council accountable.
             </p>
+            <ul className="space-y-2 text-[14px] text-slate-700 leading-relaxed">
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <span>Raise an issue, and it goes to the person whose job it is to fix it.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>They have 48 hours to reply, or it goes up the chain.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Vote for what matters, and watch every step in the open until it&apos;s done.</span>
+              </li>
+            </ul>
           </div>
 
           <div className="pt-2">
@@ -78,7 +104,7 @@ function AllIssuesContent() {
           </div>
         </div>
 
-        {/* Feature Cards Grid */}
+        {/* 3 Pillars Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -229,21 +255,34 @@ function AllIssuesContent() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header & Quick SLA Metric Strip */}
+      {/* 1. Header & Quick Purpose Brief */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 border-b border-slate-200/80 pb-4">
-          <div>
-            <h1 className="text-[28px] sm:text-[32px] font-bold text-slate-900 tracking-tight leading-tight">
-              Campus Grievances & Accountability
-            </h1>
-            <p className="text-[14px] sm:text-[15px] text-slate-600 mt-1">
-              Browse issues, track council SLA response times, and upvote improvements across IIM Lucknow.
-            </p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <img
+              src="/logo.png"
+              alt="Betaal Logo"
+              className="w-11 h-14 object-contain drop-shadow-xs shrink-0 mt-0.5"
+            />
+            <div className="space-y-1">
+              <div className="flex items-baseline">
+                <h1 className="text-[24px] sm:text-[26px] font-bold text-slate-900 font-brand">
+                  Betaal
+                </h1>
+                <span className="text-[20px] sm:text-[22px] font-black text-rose-600 ml-1.5 font-brand">
+                  1.0
+                </span>
+                <span className="text-[12px] text-slate-400 font-medium ml-2">· IIM Lucknow</span>
+              </div>
+              <p className="text-[13px] sm:text-[14px] text-slate-600 leading-relaxed font-medium">
+                Betaal keeps the Student Council accountable. Raise an issue, track the 48h reply SLA, and watch every step in the open until it&apos;s done.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
             <span className="text-[13px] font-semibold text-slate-700 bg-slate-100 border border-slate-200/80 px-3 py-1 rounded-full">
-              {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'} shown
+              {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
             </span>
           </div>
         </div>

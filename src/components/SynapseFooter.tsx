@@ -50,7 +50,7 @@ export function SynapseFooter() {
           {/* Right: Portal purpose & mandatory safety disclaimer (No member names) */}
           <div className="flex-1 text-center md:text-left text-xs text-gray-500 leading-relaxed max-w-xl">
             <p className="font-medium text-gray-700">
-              Sunwai — Official Student Grievance & Accountability Portal
+              Betaal 1.0 — Official Student Grievance & Accountability Portal
             </p>
             <p className="text-[11px] text-gray-400 mt-1">
               Complaints regarding harassment, ragging, or emergency safety must be reported directly to the Internal Complaints Committee (ICC) or Campus Security.

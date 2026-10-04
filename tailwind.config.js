@@ -34,6 +34,8 @@ module.exports = {
         sans: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
         montserrat: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        brand: ['"Rozha One"', '"Yatra One"', 'serif'],
+        indian: ['"Rozha One"', '"Yatra One"', 'serif'],
       },
     },
   },

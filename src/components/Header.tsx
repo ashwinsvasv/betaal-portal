@@ -67,19 +67,26 @@ export function Header() {
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
       {/* Top Main Bar */}
       <div className="max-w-[1050px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-4">
-        {/* Left: Etrigan-Style Logo */}
-        <Link href="/" className="flex flex-col items-start leading-none group shrink-0">
-          <div className="flex items-baseline">
-            <span className="text-[22px] sm:text-[24px] font-black tracking-tight text-slate-900 font-sans">
-              Sunwai
-            </span>
-            <span className="text-[20px] sm:text-[22px] font-black text-rose-600 ml-1 tracking-tight">
-              1.0
+        {/* Left: Betaal 1.0 Logo */}
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+          <img
+            src="/logo.png"
+            alt="Betaal Logo"
+            className="w-7 h-9 object-contain drop-shadow-xs transition-transform group-hover:scale-105"
+          />
+          <div className="flex flex-col items-start leading-none">
+            <div className="flex items-baseline">
+              <span className="text-[23px] sm:text-[25px] font-bold tracking-tight text-slate-900 font-brand">
+                Betaal
+              </span>
+              <span className="text-[19px] sm:text-[21px] font-black text-rose-600 ml-1 font-brand">
+                1.0
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 tracking-tight lowercase -mt-0.5 group-hover:text-slate-600 transition-colors">
+              connecting hell!
             </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 tracking-tight lowercase -mt-0.5 group-hover:text-slate-600 transition-colors">
-            connecting hell!
-          </span>
         </Link>
 
         {/* Center: Etrigan-Style Pill Search */}

@@ -30,7 +30,7 @@ test.describe('Privacy & Security Anonymity Journeys', () => {
   test('Journey 4.3: Unauthenticated guests cannot view issues without logging in', async ({ page }) => {
     // 1. Visit homepage unauthenticated
     await page.goto('/');
-    await expect(page.locator('text=Sunwai 1.0 Grievance Portal')).toBeVisible();
+    await expect(page.locator('text=Betaal keeps the Student Council accountable.')).toBeVisible();
     await expect(page.locator('main').getByText('Sign in with IIML Google')).toBeVisible();
     await expect(page.locator('text=Browse by Category')).not.toBeVisible();
 

@@ -7,9 +7,13 @@ import { AuthSync } from '@/components/AuthSync';
 import { SynapseFooter } from '@/components/SynapseFooter';
 
 export const metadata: Metadata = {
-  title: 'Sunwai — Student Council Issue Portal | IIM Lucknow',
+  title: 'Betaal 1.0 — Student Council Issue Portal | IIM Lucknow',
   description:
-    'Every student complaint at IIM Lucknow has an owner and a deadline.',
+    'Betaal keeps the Student Council accountable. Raise an issue, and it goes to the person whose job it is to fix it.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -23,9 +27,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Rozha+One&family=Yatra+One&display=swap"
           rel="stylesheet"
         />
+        <link rel="icon" href="/logo.png" />
       </head>
       <body className="min-h-screen flex flex-col bg-[#f4f6f9] text-[#16213e] font-sans antialiased">
         <Providers>

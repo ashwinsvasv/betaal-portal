@@ -31,8 +31,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        serif: ['Fraunces', 'Georgia', 'serif'],
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        montserrat: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },

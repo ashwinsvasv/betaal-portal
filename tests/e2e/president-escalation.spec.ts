@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('President & Executive Dashboard Journeys', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+  });
+
   test('Journey 3.1 - 3.3: President KPI Dashboard, Deadline Check & Ownership Breakdown', async ({ page }) => {
     // 1. Visit Sign-in Page
     await page.goto('/signin');

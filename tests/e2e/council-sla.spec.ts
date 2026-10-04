@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Council & Representative SLA Journeys', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+  });
+
   test('Journey 2.1 - 2.4: Inbox Triage, 48h Acknowledge, and Progress Updates', async ({ page }) => {
     // 1. Visit Sign-in Page
     await page.goto('/signin');

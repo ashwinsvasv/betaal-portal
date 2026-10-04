@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Privacy & Security Anonymity Journeys', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+  });
+
   test('Journey 4.1 - 4.2: Public student anonymity vs Private issue scoping', async ({ page }) => {
     // 1. Visit All Issues as General Student Priya Nair
     await page.goto('/signin');
@@ -20,5 +25,17 @@ test.describe('Privacy & Security Anonymity Journeys', () => {
     // 3. Verify that non-admin students cannot access /dashboard
     await page.goto('/dashboard');
     await expect(page.locator('text=Access restricted')).toBeVisible();
+  });
+
+  test('Journey 4.3: Unauthenticated guests cannot view issues without logging in', async ({ page }) => {
+    // 1. Visit homepage unauthenticated
+    await page.goto('/');
+    await expect(page.locator('text=Sunwai 1.0 Grievance Portal')).toBeVisible();
+    await expect(page.locator('main').getByText('Sign in with IIML Google')).toBeVisible();
+    await expect(page.locator('text=Browse by Category')).not.toBeVisible();
+
+    // 2. Direct issue URL requires sign-in
+    await page.goto('/issue/issue-hot-water');
+    await expect(page.locator('text=Please sign in')).toBeVisible();
   });
 });

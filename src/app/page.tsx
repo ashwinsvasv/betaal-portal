@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useSunwai } from '@/lib/store';
 import { IssueRow } from '@/components/IssueRow';
 import { IssueCategory } from '@/types';
@@ -10,17 +11,17 @@ import {
   Search,
   List,
   LayoutGrid,
-  Filter,
   Flame,
   AlertTriangle,
   Clock,
   CheckCircle2,
   Building2,
   Globe,
-  SlidersHorizontal,
-  ChevronDown,
   Layers,
   Sparkles,
+  ShieldCheck,
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
 
 function AllIssuesContent() {
@@ -43,6 +44,75 @@ function AllIssuesContent() {
 
   const currentUserRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isPresident = currentUserRole?.name === 'President';
+
+  // If user is not signed in, gate access to issues
+  if (!currentUser) {
+    return (
+      <div className="space-y-8 py-4">
+        {/* Hero Gate Banner */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center space-y-6 shadow-sm max-w-2xl mx-auto">
+          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xs">
+            <Lock className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 uppercase tracking-wider">
+              <span>IIM Lucknow Student Council</span>
+            </div>
+            <h1 className="text-[28px] sm:text-[34px] font-bold text-slate-900 tracking-tight leading-tight">
+              Sunwai 1.0 Grievance Portal
+            </h1>
+            <p className="text-[14px] sm:text-[15px] text-slate-600 max-w-lg mx-auto leading-relaxed">
+              Every campus grievance has an assigned owner, strict 48-hour SLA response clock, and transparent progress updates. Sign in with your official account to browse and raise issues.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/signin"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold px-6 py-3 rounded-full transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <span>Sign in with IIML Google</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Feature Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Direct Accountability</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Automatic routing to elected Cabinet Secretaries and Hostel Reps with enforceable response deadlines.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Duplicate Prevention</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Real-time detection finds existing reports so students can upvote and hit the 200+ Priority threshold faster.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-2.5 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h3 className="text-[16px] font-bold text-slate-900">Student Privacy</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed">
+              Public posts anonymize student identities, and private submissions remain strictly between the raiser and council.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate status metric numbers across accessible issues
   const baseAccessibleIssues = useMemo(() => {
@@ -163,7 +233,7 @@ function AllIssuesContent() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 border-b border-slate-200/80 pb-4">
           <div>
-            <h1 className="text-[28px] sm:text-[32px] font-serif font-bold text-slate-900 tracking-tight leading-tight">
+            <h1 className="text-[28px] sm:text-[32px] font-bold text-slate-900 tracking-tight leading-tight">
               Campus Grievances & Accountability
             </h1>
             <p className="text-[14px] sm:text-[15px] text-slate-600 mt-1">
@@ -454,7 +524,7 @@ function AllIssuesContent() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
             <Search className="w-6 h-6" />
           </div>
-          <h2 className="text-[18px] font-serif font-bold text-slate-900">No matching issues found</h2>
+          <h2 className="text-[18px] font-bold text-slate-900">No matching issues found</h2>
           <p className="text-[14px] text-slate-500 max-w-md mx-auto">
             {searchQuery
               ? `No issues matched your search query "${searchQuery}". Try clearing filters or using different keywords.`
@@ -495,7 +565,7 @@ function AllIssuesContent() {
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-[16px] sm:text-[17px] font-serif font-bold text-slate-900">
+                      <h2 className="text-[16px] sm:text-[17px] font-bold text-slate-900">
                         {meta.label}
                       </h2>
                       <p className="text-[12px] text-slate-500">

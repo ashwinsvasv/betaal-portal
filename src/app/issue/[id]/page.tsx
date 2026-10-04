@@ -90,6 +90,26 @@ export default function IssueDetailPage() {
     );
   }
 
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-xs">
+        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h1 className="text-[22px] font-bold text-slate-900">Please sign in</h1>
+        <p className="text-[14px] text-slate-600">
+          Sign in with your IIM Lucknow account to view grievance details, council response timelines, and participate in discussion.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in with IIML Google
+        </Link>
+      </div>
+    );
+  }
+
   // Permission checks
   const canView = canUserViewIssue(currentUser, issue);
   if (!canView) {

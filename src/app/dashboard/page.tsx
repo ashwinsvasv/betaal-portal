@@ -19,25 +19,42 @@ export default function DashboardPage() {
     run500UserLoadTest,
   } = useSunwai();
 
-  const userRole = getUserRole(currentUser.id);
+  const userRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isPresident = userRole?.name === 'President';
-  const isAdmin = currentUser.email === 'techadmin@iiml.ac.in';
+  const isAdmin = currentUser?.email === 'techadmin@iiml.ac.in';
 
   const [cronNotice, setCronNotice] = useState<string | null>(null);
 
-  // If viewer is not President or Admin
-  if (!isPresident && !isAdmin) {
+  // If unauthenticated or viewer is not President or Admin
+  if (!currentUser) {
     return (
-      <div className="bg-white rounded-[12px] border border-[#dde2ea] p-10 max-w-[600px] mx-auto text-center space-y-4 my-8">
-        <h1 className="text-[20px] font-serif text-[#16213e]">Access restricted</h1>
-        <p className="text-[14px] text-[#5b6478]">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
+        <p className="text-[14px] text-[#64748b]">
           The central dashboard is reserved for the Student Council President and Administrators.
         </p>
         <Link
           href="/signin"
-          className="inline-block bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
         >
           Sign in as President
+        </Link>
+      </div>
+    );
+  }
+
+  if (!isPresident && !isAdmin) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Access restricted</h1>
+        <p className="text-[14px] text-[#64748b]">
+          The central dashboard is reserved for the Student Council President and Administrators.
+        </p>
+        <Link
+          href="/"
+          className="inline-block bg-gray-100 hover:bg-gray-200 text-[#0f172a] text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors"
+        >
+          Back to all issues
         </Link>
       </div>
     );
@@ -406,9 +423,8 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const rows = generate2000TestStudents(users);
-                    const validRows = rows.filter((r) => r.isValid);
-                    const res = bulkImportStudents(validRows);
+                    const rows = generate2000TestStudents();
+                    const res = bulkImportStudents(rows);
                     setCronNotice(`Successfully enrolled ${res.importedCount} student records into directory.`);
                   }}
                   className="bg-white border border-[#dde2ea] hover:bg-[#f4f6f9] text-[#16213e] text-[13px] font-medium px-3.5 py-1.5 rounded-[8px] transition-colors"

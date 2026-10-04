@@ -33,8 +33,9 @@ import { DEFAULT_ABUSE_WORDS, checkIssueContent } from '@/lib/moderation';
 import { LoadTestResult, execute500UserLoadTest } from '@/lib/load-test';
 
 interface SunwaiContextType {
-  currentUser: User;
-  setCurrentUser: (user: User) => void;
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  logout: () => void;
   users: User[];
   roles: CouncilRole[];
   issues: Issue[];
@@ -98,7 +99,7 @@ interface SunwaiContextType {
   updateAbuseWords: (words: string[]) => void;
 
   // Privacy Rule & Authorization Checkers (Exit Test 2)
-  canUserViewIssue: (user: User, issue: Issue) => boolean;
+  canUserViewIssue: (user: User | null, issue: Issue) => boolean;
   testPrivacyIsolationSuite: () => {
     passed: boolean;
     results: {
@@ -127,7 +128,7 @@ const STORAGE_KEY = 'sunwai_state_v5';
 
 export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   const dispatchedEmailIds = useRef(new Set<string>());
-  const [currentUser, setCurrentUserState] = useState<User>(SEED_USERS[11]); // Default to Rahul Sharma (PGP student)
+  const [currentUser, setCurrentUserState] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(SEED_USERS);
   const [roles, setRoles] = useState<CouncilRole[]>(SEED_ROLES);
 
@@ -184,7 +185,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
           outbox,
           auditLog,
           abuseWords,
-          currentUserId: currentUser.id,
+          currentUserId: currentUser ? currentUser.id : null,
           userVotes: Array.from(userVotes),
           lastCronReport,
           simulatedClockOffsetHours,
@@ -228,23 +229,37 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       });
   }, [outbox]);
 
-  const setCurrentUser = (user: User) => {
+  const setCurrentUser = (user: User | null) => {
     setCurrentUserState(user);
   };
 
-  const getUserRole = (userId: string) => {
+  const logout = () => {
+    setCurrentUserState(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      window.location.href = '/signin';
+    }
+  };
+
+  const getUserRole = (userId?: string) => {
+    if (!userId) return undefined;
     return roles.find((r) => r.holder_user_id === userId);
   };
 
-  const getRoleById = (roleId: string) => {
+  const getRoleById = (roleId?: string) => {
+    if (!roleId) return undefined;
     return roles.find((r) => r.id === roleId);
   };
 
-  const getUserById = (userId: string) => {
+  const getUserById = (userId?: string) => {
+    if (!userId) return undefined;
     return users.find((u) => u.id === userId);
   };
 
   const logAuditAction = (action: string, target: string, details: string) => {
+    if (!currentUser) return;
     const actorRole = getUserRole(currentUser.id);
     const newEntry: AuditLogItem = {
       id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -268,7 +283,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     setOutbox(SEED_OUTBOX);
     setAuditLog(SEED_AUDIT_LOG);
     setAbuseWords(DEFAULT_ABUSE_WORDS);
-    setCurrentUserState(SEED_USERS[11]);
+    setCurrentUserState(null);
     setUserVotes(new Set(['issue-hot-water']));
     setLastCronReport(null);
     setSimulatedClockOffsetHours(0);
@@ -298,6 +313,9 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     ccRoleIds: string[];
     photos: string[];
   }): Issue => {
+    if (!currentUser) {
+      throw new Error('Please sign in to raise an issue.');
+    }
     const now = new Date();
 
     // Sprint 4 Rate limiting check: max 5 new issues per student per hour
@@ -436,7 +454,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C6: Set Severity flag
   const setIssueSeverity = (issueId: string, severity: IssueSeverity) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const prevSeverity = target.severity;
     if (prevSeverity === severity) return;
@@ -473,7 +491,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // S5: Edit issue
   const editIssue = (issueId: string, title: string, details: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return false;
+    if (!target || !currentUser) return false;
     if (target.raised_by !== currentUser.id) return false;
     if (target.status !== 'Raised') return false;
 
@@ -508,7 +526,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // S5: Delete issue
   const deleteIssue = (issueId: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return false;
+    if (!target || !currentUser) return false;
     if (target.raised_by !== currentUser.id) return false;
     if (target.status !== 'Raised' || target.vote_count > 1) {
       return false;
@@ -522,7 +540,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // S5: Withdraw issue
   const withdrawIssue = (issueId: string): boolean => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return false;
+    if (!target || !currentUser) return false;
     if (target.raised_by !== currentUser.id) return false;
 
     const now = new Date().toISOString();
@@ -557,7 +575,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C2: Acknowledge issue
   const acknowledgeIssue = (issueId: string, note: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date().toISOString();
     setIssues((prev) =>
@@ -600,7 +618,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C3: Start Work / Move to In Progress
   const startWork = (issueId: string, note: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date();
     const nextUpdateDue = new Date(now.getTime() + 7 * 86400 * 1000).toISOString();
@@ -646,7 +664,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C3: Post Progress Update
   const postProgressUpdate = (issueId: string, note: string, photoUrl?: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date();
     const nextUpdateDue = new Date(now.getTime() + 7 * 86400 * 1000).toISOString();
@@ -692,7 +710,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C4: Close as Completed
   const completeIssue = (issueId: string, note: string, photoUrl?: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date();
     setIssues((prev) =>
@@ -736,7 +754,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // C4: Close as Rejected
   const rejectIssue = (issueId: string, reason: string, note: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date();
     setIssues((prev) =>
@@ -826,7 +844,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     const update: StatusUpdate = {
       id: `upd-${Date.now()}`,
       issue_id: issueId,
-      actor_id: currentUser.id,
+      actor_id: currentUser ? currentUser.id : 'system',
       from_status: target.status,
       to_status: 'Raised',
       note: updateNote,
@@ -857,7 +875,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // S9: Confirm Resolution (Student)
   const confirmResolution = (issueId: string, note?: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date().toISOString();
     setIssues((prev) =>
@@ -889,7 +907,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // S9: Reopen Issue (Student)
   const reopenIssue = (issueId: string, reason: string) => {
     const target = issues.find((i) => i.id === issueId);
-    if (!target) return;
+    if (!target || !currentUser) return;
 
     const now = new Date();
     const nextUpdateDue = new Date(now.getTime() + 7 * 86400 * 1000).toISOString();
@@ -936,6 +954,9 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
 
   // S8: Add Comment
   const addComment = (issueId: string, body: string) => {
+    if (!currentUser) {
+      throw new Error('Please sign in to comment.');
+    }
     const now = new Date();
 
     // Sprint 4 Rate limiting check: max 30 comments per student per hour
@@ -1001,7 +1022,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
     const update: StatusUpdate = {
       id: `upd-${Date.now()}`,
       issue_id: issueId,
-      actor_id: currentUser.id,
+      actor_id: currentUser ? currentUser.id : 'admin',
       from_status: target.status,
       to_status: action === 'approve' ? 'Raised' : 'Rejected',
       note: action === 'approve'
@@ -1177,8 +1198,9 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
   // - President: visible
   // - Admin: NOT VISIBLE!
   // - General students: NOT VISIBLE
-  const canUserViewIssue = (user: User, issue: Issue): boolean => {
+  const canUserViewIssue = (user: User | null, issue: Issue): boolean => {
     if (issue.visibility === 'public') return true;
+    if (!user) return false;
 
     // Admin is explicitly blocked from reading private issues
     const role = getUserRole(user.id);
@@ -1291,6 +1313,7 @@ export function SunwaiProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentUser,
         setCurrentUser,
+        logout,
         users,
         roles,
         issues,

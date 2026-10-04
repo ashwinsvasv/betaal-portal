@@ -8,6 +8,23 @@ import { IssueRow } from '@/components/IssueRow';
 export default function MyIssuesPage() {
   const { issues, currentUser } = useSunwai();
 
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
+        <p className="text-[14px] text-[#64748b]">
+          Sign in with your IIM Lucknow account to view the issues you have raised and track their resolution progress.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in with IIML Google
+        </Link>
+      </div>
+    );
+  }
+
   // Issues raised by current user
   const myIssues = issues.filter((i) => i.raised_by === currentUser.id);
 
@@ -15,24 +32,24 @@ export default function MyIssuesPage() {
     <div className="space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-[30px] font-serif text-[#16213e] leading-tight">
+        <h1 className="text-[30px] font-serif font-bold text-[#0f172a] leading-tight">
           My issues
         </h1>
-        <p className="text-[15px] text-[#5b6478] mt-1">
+        <p className="text-[15px] text-[#64748b] mt-1">
           Issues you have raised, their assigned owners, and current progress.
         </p>
       </div>
 
       {/* The Single White Panel containing the Issue List (without vote buttons) */}
-      <div className="bg-white rounded-[12px] border border-[#dde2ea] divide-y divide-[#dde2ea]">
+      <div className="bg-white rounded-2xl border border-gray-200/80 divide-y divide-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] overflow-hidden">
         {myIssues.length === 0 ? (
           <div className="p-12 text-center space-y-3">
-            <p className="text-[15px] text-[#5b6478]">
-              You haven't raised any issues yet.
+            <p className="text-[15px] text-[#64748b]">
+              You haven&apos;t raised any issues yet.
             </p>
             <Link
               href="/raise"
-              className="inline-block bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+              className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
             >
               Raise an issue
             </Link>

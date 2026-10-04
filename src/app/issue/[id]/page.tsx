@@ -84,11 +84,11 @@ export default function IssueDetailPage() {
 
   const raiser = getUserById(issue.raised_by);
   const ownerRole = getRoleById(issue.owner_role_id);
-  const currentUserRole = getUserRole(currentUser.id);
+  const currentUserRole = currentUser ? getUserRole(currentUser.id) : undefined;
 
   const isPresident = currentUserRole?.name === 'President';
-  const isOwner = currentUserRole?.id === issue.owner_role_id || isPresident;
-  const isRaiser = issue.raised_by === currentUser.id;
+  const isOwner = currentUser ? (currentUserRole?.id === issue.owner_role_id || isPresident) : false;
+  const isRaiser = currentUser ? issue.raised_by === currentUser.id : false;
   const isVoted = userVotes.has(issue.id);
 
   const issueUpdates = statusUpdates.filter((u) => u.issue_id === issue.id);

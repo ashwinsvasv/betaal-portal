@@ -194,6 +194,6 @@ export interface StudentUploadRow {
   hostel: string;
   course: string;
   batch: string;
-  isValid: boolean;
+  isValid?: boolean;
   error?: string;
 }

@@ -22,11 +22,11 @@ export function AuthSync() {
       syncedEmail.current = null;
       return;
     }
-    const email = session.user?.email?.toLowerCase();
+    const email = session?.user?.email?.toLowerCase();
     if (!email || syncedEmail.current === email) return;
     syncedEmail.current = email;
 
-    const mapped = session.user.sunwaiUserId
+    const mapped = session.user?.sunwaiUserId
       ? users.find((u) => u.id === session.user.sunwaiUserId)
       : undefined;
     const existing = mapped ?? users.find((u) => u.email.toLowerCase() === email);
@@ -34,15 +34,16 @@ export function AuthSync() {
       setCurrentUser(existing);
       return;
     }
+
     // First sign-in: create a student; auto-extract course/batch if email username is a roll number
     const username = email.split('@')[0].toUpperCase();
     const parsed = parseRollNumber(username);
     const created = createUser({
-      roll_no: parsed.isValid ? username : '',
-      name: session.user.name || username,
+      roll_no: parsed.isValid ? username : username,
+      name: session.user?.name || username,
       email,
-      course: parsed.course || '',
-      batch: parsed.batch || '',
+      course: parsed.course || 'PGP',
+      batch: parsed.batch || '42',
       hostel: '',
       is_active: true,
     });
@@ -51,10 +52,10 @@ export function AuthSync() {
 
   // Profile incomplete: keep the user on the one-time setup screen.
   useEffect(() => {
-    if (status === 'authenticated' && currentUser.hostel === '' && pathname !== '/signin') {
+    if (status === 'authenticated' && currentUser && currentUser.hostel === '' && pathname !== '/signin') {
       router.replace('/signin');
     }
-  }, [status, currentUser.hostel, pathname, router]);
+  }, [status, currentUser, pathname, router]);
 
   return null;
 }

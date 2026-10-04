@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
-import { ALL_HOSTELS, ALL_COURSES } from '@/lib/constants';
+import { ALL_HOSTELS } from '@/lib/constants';
 
 type DemoCategory = 'council' | 'hostel_reps' | 'class_reps' | 'students';
 
@@ -12,12 +12,10 @@ export default function SignInPage() {
   const router = useRouter();
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const { status } = useSession();
-  const { users, roles, currentUser, setCurrentUser, updateUser } = useSunwai();
+  const { users, currentUser, setCurrentUser, updateUser } = useSunwai();
 
   const [googleReady, setGoogleReady] = useState<boolean | null>(null);
   const [hostel, setHostel] = useState('');
-  const [course, setCourse] = useState('');
-  const [batch, setBatch] = useState('');
   const [profileError, setProfileError] = useState('');
 
   // Demo Login Directory Tab & Search
@@ -33,11 +31,6 @@ export default function SignInPage() {
       .catch(() => setGoogleReady(false));
   }, []);
 
-  useEffect(() => {
-    if (currentUser.course && !course) setCourse(currentUser.course);
-    if (currentUser.batch && !batch) setBatch(currentUser.batch);
-  }, [currentUser, course, batch]);
-
   const handleSelectUser = (userId: string) => {
     const found = users.find((u) => u.id === userId);
     if (found) {
@@ -46,15 +39,20 @@ export default function SignInPage() {
     }
   };
 
-  const needsProfile = status === 'authenticated' && currentUser.hostel === '';
+  const needsProfile = status === 'authenticated' && currentUser && currentUser.hostel === '';
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hostel) return setProfileError('Pick your hostel.');
-    if (!course) return setProfileError('Pick your programme.');
-    if (!/^\d{2}$/.test(batch)) return setProfileError('Enter your batch as two digits, for example 42.');
-    const updated = { ...currentUser, hostel, course, batch };
-    updateUser(currentUser.id, { hostel, course, batch });
+    if (!currentUser) return;
+
+    const updated = {
+      ...currentUser,
+      hostel,
+      course: currentUser.course || 'PGP',
+      batch: currentUser.batch || '42',
+    };
+    updateUser(currentUser.id, { hostel, course: updated.course, batch: updated.batch });
     setCurrentUser(updated);
     router.push('/');
   };
@@ -141,30 +139,55 @@ export default function SignInPage() {
     );
   }, [users, activeTab, demoSearch]);
 
-  if (needsProfile) {
+  if (needsProfile && currentUser) {
     return (
       <div className="py-8 sm:py-16">
         <form
           onSubmit={handleProfileSave}
-          className="bg-white rounded-[12px] border border-[#dde2ea] p-6 sm:p-10 max-w-[480px] mx-auto space-y-5 shadow-sm"
+          className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-10 max-w-[480px] mx-auto space-y-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
         >
           <div>
-            <h1 className="text-[30px] font-serif text-[#16213e] leading-tight">Pick your hostel</h1>
-            <p className="text-[15px] text-[#5b6478] mt-1">
-              One time only. Your hostel decides which representative receives your tickets.
+            <h1 className="text-[26px] sm:text-[28px] font-serif font-bold text-[#0f172a] leading-tight">
+              Pick your hostel
+            </h1>
+            <p className="text-[14px] text-[#64748b] mt-1">
+              One time setup. Your hostel determines which representative receives your hostel-specific tickets.
             </p>
           </div>
+
+          {/* Auto-Extracted Student Info from Email */}
+          <div className="bg-[#f8fafc] rounded-xl p-4 border border-gray-200 text-[13px] space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Student Name:</span>
+              <span className="font-bold text-gray-900">{currentUser.name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">IIML Email:</span>
+              <span className="font-mono text-gray-700">{currentUser.email}</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-gray-200/70 pt-2">
+              <span className="text-gray-500">Auto-Detected Programme:</span>
+              <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-xs">
+                {currentUser.course || 'PGP'} (Batch {currentUser.batch || '42'}) · {currentUser.roll_no || 'Enrolled'}
+              </span>
+            </div>
+          </div>
+
           {profileError && (
-            <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3 rounded-[8px]">
+            <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[14px] p-3 rounded-xl">
               {profileError}
             </div>
           )}
+
+          {/* Only Single Required Input: Hostel */}
           <div>
-            <label className="block text-[14px] font-medium mb-1.5">Hostel (1 to 17)</label>
+            <label className="block text-[14px] font-semibold text-[#0f172a] mb-1.5">
+              Hostel (1 to 17)
+            </label>
             <select
               value={hostel}
               onChange={(e) => setHostel(e.target.value)}
-              className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-[8px] focus:outline-none focus:border-[#2f45c5]"
+              className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#2563eb]"
             >
               <option value="">Choose your hostel</option>
               {ALL_HOSTELS.map((h) => (
@@ -174,38 +197,12 @@ export default function SignInPage() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[14px] font-medium mb-1.5">Programme</label>
-              <select
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-[8px] focus:outline-none focus:border-[#2f45c5]"
-              >
-                <option value="">Choose</option>
-                {ALL_COURSES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[14px] font-medium mb-1.5">Batch</label>
-              <input
-                value={batch}
-                onChange={(e) => setBatch(e.target.value)}
-                placeholder="42"
-                maxLength={2}
-                className="w-full bg-white border border-[#dde2ea] text-[15px] px-3.5 py-2.5 rounded-[8px] focus:outline-none focus:border-[#2f45c5]"
-              />
-            </div>
-          </div>
+
           <button
             type="submit"
-            className="w-full bg-[#2f45c5] hover:bg-[#2537a0] text-white font-medium text-[15px] py-2.5 rounded-[8px] transition-colors"
+            className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-[15px] py-2.5 rounded-xl transition-colors shadow-xs"
           >
-            Save and continue
+            Save and continue →
           </button>
         </form>
       </div>
@@ -214,79 +211,79 @@ export default function SignInPage() {
 
   return (
     <div className="py-8 sm:py-12">
-      <div className="bg-white rounded-[12px] border border-[#dde2ea] p-6 sm:p-10 max-w-[960px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-8 lg:gap-12 items-start">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-10 max-w-[960px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-8 lg:gap-12 items-start shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
         {/* Left: Headline & Statement */}
         <div className="space-y-4 lg:sticky lg:top-24">
-          <div className="text-[13px] font-medium text-[#2f45c5] uppercase tracking-wide">
+          <div className="text-[13px] font-semibold text-[#2563eb] uppercase tracking-wide">
             Sunwai · IIM Lucknow
           </div>
-          <h1 className="text-[32px] font-serif text-[#16213e] leading-tight">
+          <h1 className="text-[32px] font-serif text-[#0f172a] font-bold leading-tight">
             Raise it once. Someone owns it. They have 48 hours.
           </h1>
-          <p className="text-[15px] text-[#5b6478] leading-relaxed">
+          <p className="text-[15px] text-[#64748b] leading-relaxed">
             Every complaint at IIM Lucknow is given an official council owner, a clear deadline, and a public status so nothing falls through the cracks.
           </p>
 
-          <div className="pt-4 border-t border-[#dde2ea] space-y-2 text-[13px] text-[#5b6478]">
+          <div className="pt-4 border-t border-gray-100 space-y-2 text-[13px] text-[#64748b]">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#17734a]" />
               <span>Full council coverage: 8 portfolios, 17 Hostels, 9 Sections.</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#2f45c5]" />
+              <span className="w-2 h-2 rounded-full bg-[#2563eb]" />
               <span>Instant demo access to test any stakeholder view.</span>
             </div>
           </div>
         </div>
 
         {/* Right: Sign in button & Demo account directory */}
-        <div className="space-y-6 lg:border-l lg:border-[#dde2ea] lg:pl-8">
+        <div className="space-y-6 lg:border-l lg:border-gray-200 lg:pl-8">
           {/* Primary Google SSO Action */}
           <div>
             {errorText && (
-              <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[13px] p-3 rounded-[8px] mb-3">
+              <div className="bg-[#fdecea] border border-[#b42318] text-[#b42318] text-[13px] p-3 rounded-xl mb-3">
                 {errorText}
               </div>
             )}
             {googleReady === false ? (
-              <p className="text-[13px] text-[#9a5506] bg-[#fff3dc] p-3 rounded-[8px]">
+              <p className="text-[13px] text-[#9a5506] bg-[#fff3dc] p-3 rounded-xl">
                 Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local, or explore with the demo accounts below.
               </p>
             ) : (
               <button
                 type="button"
                 onClick={() => signIn('google', { callbackUrl: '/' })}
-                className="w-full bg-[#2f45c5] hover:bg-[#2537a0] text-white font-medium text-[15px] py-2.5 px-4 rounded-[8px] transition-colors text-center shadow-sm"
+                className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-[15px] py-2.5 px-4 rounded-xl transition-colors text-center shadow-xs"
               >
                 Sign in with IIML Google
               </button>
             )}
-            <p className="text-[12px] text-[#5b6478] text-center mt-2">
+            <p className="text-[12px] text-[#64748b] text-center mt-2">
               Requires an active @iiml.ac.in account.
             </p>
           </div>
 
           {/* Demo Login Window / Categorized Persona Switcher */}
-          <div className="border-t border-[#dde2ea] pt-5 space-y-3">
+          <div className="border-t border-gray-100 pt-5 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-[12px] font-medium text-[#5b6478] uppercase tracking-wider">
+              <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
                 Demo login directory
               </div>
-              <span className="text-[11px] text-[#5b6478]">One-click instant login</span>
+              <span className="text-[11px] text-gray-400">One-click instant login</span>
             </div>
 
             {/* Segmented Tab Controls */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#f4f6f9] rounded-[8px] text-[12px] font-medium">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#f4f6f9] rounded-xl text-[12px] font-medium border border-gray-200/60">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('council');
                   setDemoSearch('');
                 }}
-                className={`py-1.5 px-2 rounded-[6px] transition-colors text-center ${
+                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
                   activeTab === 'council'
-                    ? 'bg-white text-[#16213e] shadow-xs'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 Council (9)
@@ -297,10 +294,10 @@ export default function SignInPage() {
                   setActiveTab('hostel_reps');
                   setDemoSearch('');
                 }}
-                className={`py-1.5 px-2 rounded-[6px] transition-colors text-center ${
+                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
                   activeTab === 'hostel_reps'
-                    ? 'bg-white text-[#16213e] shadow-xs'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 Hostel Reps (17)
@@ -311,10 +308,10 @@ export default function SignInPage() {
                   setActiveTab('class_reps');
                   setDemoSearch('');
                 }}
-                className={`py-1.5 px-2 rounded-[6px] transition-colors text-center ${
+                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
                   activeTab === 'class_reps'
-                    ? 'bg-white text-[#16213e] shadow-xs'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 Class Reps (9)
@@ -325,10 +322,10 @@ export default function SignInPage() {
                   setActiveTab('students');
                   setDemoSearch('');
                 }}
-                className={`py-1.5 px-2 rounded-[6px] transition-colors text-center ${
+                className={`py-1.5 px-2 rounded-lg transition-all text-center ${
                   activeTab === 'students'
-                    ? 'bg-white text-[#16213e] shadow-xs'
-                    : 'text-[#5b6478] hover:text-[#16213e]'
+                    ? 'bg-white text-[#0f172a] font-semibold shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
                 Students (20)
@@ -342,13 +339,13 @@ export default function SignInPage() {
                 value={demoSearch}
                 onChange={(e) => setDemoSearch(e.target.value)}
                 placeholder="Filter by name, hostel, or role..."
-                className="w-full bg-white border border-[#dde2ea] text-[13px] px-3 py-1.5 rounded-[6px] placeholder:text-[#5b6478]/70 focus:outline-none focus:border-[#2f45c5]"
+                className="w-full bg-white border border-[#dde2ea] text-[13px] px-3 py-1.5 rounded-xl placeholder:text-[#64748b]/70 focus:outline-none focus:border-[#2563eb]"
               />
               {demoSearch && (
                 <button
                   type="button"
                   onClick={() => setDemoSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#5b6478] hover:text-[#16213e]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 hover:text-gray-700"
                 >
                   ✕
                 </button>
@@ -356,9 +353,9 @@ export default function SignInPage() {
             </div>
 
             {/* Persona List Window */}
-            <div className="max-h-[300px] overflow-y-auto space-y-1.5 pr-1 border border-[#dde2ea]/60 rounded-[8px] p-1.5 bg-[#fafbfc]">
+            <div className="max-h-[300px] overflow-y-auto space-y-1.5 pr-1 border border-gray-100 rounded-xl p-1.5 bg-[#fafbfc]">
               {demoPersonas.length === 0 ? (
-                <div className="p-4 text-center text-[12px] text-[#5b6478]">
+                <div className="p-4 text-center text-[12px] text-gray-500">
                   No accounts match &quot;{demoSearch}&quot; in this category.
                 </div>
               ) : (
@@ -367,16 +364,16 @@ export default function SignInPage() {
                     key={p.user.id}
                     type="button"
                     onClick={() => handleSelectUser(p.user.id)}
-                    className="w-full text-left p-2.5 bg-white rounded-[6px] border border-[#dde2ea] hover:border-[#2f45c5] hover:bg-[#eaedfb]/30 transition-all flex items-center justify-between text-[13px] group"
+                    className="w-full text-left p-2.5 bg-white rounded-lg border border-gray-200/80 hover:border-[#2563eb] hover:bg-[#eff6ff] transition-all flex items-center justify-between text-[13px] group shadow-2xs"
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="font-medium text-[#16213e] truncate flex items-center gap-1.5">
+                      <div className="font-semibold text-gray-900 truncate flex items-center gap-1.5">
                         <span>{p.user.name}</span>
-                        <span className="text-[11px] font-normal text-[#5b6478]">({p.label})</span>
+                        <span className="text-[11px] font-normal text-gray-500">({p.label})</span>
                       </div>
-                      <div className="text-[11px] text-[#5b6478] truncate">{p.meta}</div>
+                      <div className="text-[11px] text-gray-500 truncate">{p.meta}</div>
                     </div>
-                    <span className="text-[12px] text-[#2f45c5] font-medium whitespace-nowrap opacity-90 group-hover:translate-x-0.5 transition-transform">
+                    <span className="text-[12px] text-[#2563eb] font-semibold whitespace-nowrap opacity-90 group-hover:translate-x-0.5 transition-transform">
                       Sign in →
                     </span>
                   </button>
@@ -389,4 +386,3 @@ export default function SignInPage() {
     </div>
   );
 }
-

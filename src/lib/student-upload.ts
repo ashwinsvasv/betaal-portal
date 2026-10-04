@@ -7,8 +7,16 @@ export const DEFAULT_COURSE_PREFIXES: CoursePrefix[] = [
   { prefix: 'IPM', course_name: 'Integrated Programme in Management' },
   { prefix: 'IPMX', course_name: 'International Programme for Executives' },
   { prefix: 'FPM', course_name: 'Fellow Programme in Management' },
+  { prefix: 'PHD', course_name: 'Doctoral Programme in Management' },
+  { prefix: 'EFPM', course_name: 'Executive Fellow Programme in Management' },
+  { prefix: 'WMP', course_name: 'Working Managers Programme' },
+  { prefix: 'SM', course_name: 'Sustainable Management' },
 ];
 
+/**
+ * Parses roll numbers of the format XXXAAYYY (e.g., PGP42069, ABM20001, PHD41001)
+ * where XXX = Course prefix, AA = 2-digit Batch number, YYY = Student sequence.
+ */
 export function parseRollNumber(
   rollNo: string,
   prefixes: CoursePrefix[] = DEFAULT_COURSE_PREFIXES
@@ -19,38 +27,37 @@ export function parseRollNumber(
 
   const cleaned = rollNo.trim().toUpperCase();
 
-  // Find matching prefix from the table (longest prefix first to handle IPMX vs IPM)
+  // Method 1: Known prefixes match (longest prefix first)
   const sortedPrefixes = [...prefixes].sort((a, b) => b.prefix.length - a.prefix.length);
   const matched = sortedPrefixes.find((p) => cleaned.startsWith(p.prefix));
 
-  if (!matched) {
+  if (matched) {
+    const remainder = cleaned.slice(matched.prefix.length);
+    const batchMatch = remainder.match(/^(\d{2})/);
+    if (batchMatch) {
+      return {
+        isValid: true,
+        course: matched.prefix,
+        batch: batchMatch[1],
+      };
+    }
+  }
+
+  // Method 2: Generic format regex ^([A-Z]{2,6})(\d{2})(\d{1,5})$ (e.g., PGP42069 -> course: PGP, batch: 42)
+  const genericMatch = cleaned.match(/^([A-Z]{2,6})(\d{2})(\d{1,5})$/);
+  if (genericMatch) {
     return {
-      isValid: false,
-      course: '',
-      batch: '',
-      error: `Unknown course prefix. No matching programme for "${cleaned.slice(0, 4)}".`,
+      isValid: true,
+      course: genericMatch[1],
+      batch: genericMatch[2],
     };
   }
 
-  // The digits following the prefix determine the batch
-  const remainder = cleaned.slice(matched.prefix.length);
-  // Match the batch digits (typically first 2 digits, e.g., PGP42069 -> batch 42)
-  const batchMatch = remainder.match(/^(\d{2})/);
-
-  if (!batchMatch) {
-    return {
-      isValid: false,
-      course: matched.prefix,
-      batch: '',
-      error: `Invalid batch digits in roll number "${cleaned}".`,
-    };
-  }
-
-  const batch = batchMatch[1];
   return {
-    isValid: true,
-    course: matched.prefix,
-    batch,
+    isValid: false,
+    course: '',
+    batch: '',
+    error: `Invalid roll number format "${cleaned}". Expected format like PGP42069.`,
   };
 }
 
@@ -59,142 +66,182 @@ export function validateStudentRow(
     roll_no?: string;
     name?: string;
     email?: string;
+    course?: string;
+    batch?: string;
     hostel?: string;
   },
-  existingEmails: Set<string>,
   existingRolls: Set<string>,
-  seenInBatchEmails: Set<string>,
-  seenInBatchRolls: Set<string>,
+  existingEmails: Set<string>,
   prefixes: CoursePrefix[] = DEFAULT_COURSE_PREFIXES
-): StudentUploadRow {
+): { isValid: boolean; row?: StudentUploadRow; errors: string[] } {
+  const errors: string[] = [];
+
   const rollNo = (raw.roll_no || '').trim().toUpperCase();
   const name = (raw.name || '').trim();
   const email = (raw.email || '').trim().toLowerCase();
-  const hostel = (raw.hostel || 'Hostel 1').trim();
+  const rawCourse = (raw.course || '').trim().toUpperCase();
+  const rawBatch = (raw.batch || '').trim();
+  const hostel = (raw.hostel || '').trim();
 
-  let error: string | undefined;
+  // 1. Roll number validation & parsing
+  if (!rollNo) {
+    errors.push('Roll number is required.');
+  } else if (existingRolls.has(rollNo)) {
+    errors.push(`Duplicate roll number "${rollNo}".`);
+  }
 
-  // 1. Mandatory fields
-  if (!rollNo || !name || !email) {
-    error = 'Missing mandatory field (roll_no, name, or email).';
+  const parsed = parseRollNumber(rollNo, prefixes);
+  const course = rawCourse || parsed.course;
+  const batch = rawBatch || parsed.batch;
+
+  if (!parsed.isValid && (!rawCourse || !rawBatch)) {
+    errors.push(parsed.error || 'Could not infer course/batch from roll number.');
   }
-  // 2. Email domain restriction
-  else if (!email.endsWith('@iiml.ac.in')) {
-    error = 'Invalid email domain. Only @iiml.ac.in is permitted.';
+
+  // 2. Name validation
+  if (!name) {
+    errors.push('Student name is required.');
   }
-  // 3. Uniqueness check in current upload batch
-  else if (seenInBatchRolls.has(rollNo)) {
-    error = `Duplicate roll number "${rollNo}" inside this file.`;
-  } else if (seenInBatchEmails.has(email)) {
-    error = `Duplicate email "${email}" inside this file.`;
-  }
-  // 4. Uniqueness check against existing database
-  else if (existingRolls.has(rollNo)) {
-    error = `Roll number "${rollNo}" already registered in database.`;
+
+  // 3. Email validation
+  if (!email) {
+    errors.push('Email is required.');
+  } else if (!email.endsWith('@iiml.ac.in')) {
+    errors.push(`Email "${email}" must end with @iiml.ac.in.`);
   } else if (existingEmails.has(email)) {
-    error = `Email "${email}" already registered in database.`;
+    errors.push(`Duplicate email "${email}".`);
   }
 
-  // 5. Roll number prefix parsing
-  const rollParsed = parseRollNumber(rollNo, prefixes);
-  if (!error && !rollParsed.isValid) {
-    error = rollParsed.error;
+  // 4. Batch validation
+  if (!batch || !/^\d{2}$/.test(batch)) {
+    errors.push(`Batch "${batch}" must be 2 digits (e.g. 40, 41, 42).`);
   }
 
-  if (rollNo) seenInBatchRolls.add(rollNo);
-  if (email) seenInBatchEmails.add(email);
+  // 5. Hostel validation
+  if (!hostel) {
+    errors.push('Hostel is required.');
+  } else if (!ALL_HOSTELS.includes(hostel as any)) {
+    errors.push(`Invalid hostel "${hostel}". Allowed: Hostel 1 through Hostel 17.`);
+  }
+
+  if (errors.length > 0) {
+    return { isValid: false, errors };
+  }
 
   return {
-    roll_no: rollNo,
-    name: name || 'Unnamed Student',
-    email,
-    hostel: hostel || 'Hostel 1',
-    course: rollParsed.course || 'Unknown',
-    batch: rollParsed.batch || '00',
-    isValid: !error,
-    error,
+    isValid: true,
+    row: {
+      roll_no: rollNo,
+      name,
+      email,
+      course,
+      batch,
+      hostel,
+    },
+    errors: [],
   };
 }
 
-// Exit Test Generator: Produces exactly 2,000 real-world IIM Lucknow student records
-export function generate2000TestStudents(existingUsers: User[]): StudentUploadRow[] {
-  const firstNames = ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Sai', 'Reyansh', 'Ayaan', 'Krishna', 'Ishaan', 'Shaurya', 'Atharva', 'Advik', 'Pranav', 'Advaith', 'Aaryavart', 'Dhruv', 'Kabir', 'Rohan', 'Darsh', 'Diya', 'Saanvi', 'Ananya', 'Aadhya', 'Pari', 'Anika', 'Navya', 'Angel', 'Riya', 'Avani', 'Myra', 'Ira', 'Ahana', 'Anvi', 'Prisha', 'Riddhi', 'Vanya', 'Kavya', 'Sarah', 'Kiara'];
-  const lastNames = ['Sharma', 'Verma', 'Patel', 'Reddy', 'Nair', 'Iyer', 'Gupta', 'Singh', 'Kumar', 'Mishra', 'Pandey', 'Tiwari', 'Das', 'Sen', 'Mukherjee', 'Chatterjee', 'Banerjee', 'Bose', 'Menon', 'Pillai', 'Rao', 'Bhat', 'Hegde', 'Shetty', 'Jain', 'Agarwal', 'Mehta', 'Shah', 'Modi', 'Kulkarni', 'Deshmukh', 'Joshi', 'Patil', 'Pawar', 'Chauhan', 'Yadav', 'Malhotra', 'Kapoor', 'Khanna', 'Saxena'];
-  const hostels = ALL_HOSTELS;
+export function parseCsvContent(
+  csvText: string,
+  existingUsers: User[],
+  prefixes: CoursePrefix[] = DEFAULT_COURSE_PREFIXES
+): {
+  validRows: StudentUploadRow[];
+  invalidRows: { rowNumber: number; raw: Record<string, string>; errors: string[] }[];
+  summary: { total: number; valid: number; invalid: number };
+} {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length <= 1) {
+    return {
+      validRows: [],
+      invalidRows: [],
+      summary: { total: 0, valid: 0, invalid: 0 },
+    };
+  }
 
-  const programmes = [
-    { prefix: 'PGP', count: 1200, batch: '42' },
-    { prefix: 'ABM', count: 350, batch: '22' },
-    { prefix: 'IPM', count: 300, batch: '05' },
-    { prefix: 'IPMX', count: 150, batch: '17' },
-  ];
+  const headerLine = lines[0];
+  const headers = headerLine.split(',').map((h) => h.trim().toLowerCase().replace(/['"]/g, ''));
+
+  const rollIndex = headers.findIndex((h) => h.includes('roll') || h.includes('id'));
+  const nameIndex = headers.findIndex((h) => h.includes('name'));
+  const emailIndex = headers.findIndex((h) => h.includes('email') || h.includes('mail'));
+  const courseIndex = headers.findIndex((h) => h.includes('course') || h.includes('programme') || h.includes('program'));
+  const batchIndex = headers.findIndex((h) => h.includes('batch') || h.includes('year'));
+  const hostelIndex = headers.findIndex((h) => h.includes('hostel') || h.includes('block') || h.includes('residence'));
 
   const existingRolls = new Set(existingUsers.map((u) => u.roll_no.toUpperCase()));
   const existingEmails = new Set(existingUsers.map((u) => u.email.toLowerCase()));
-  const seenRolls = new Set<string>();
-  const seenEmails = new Set<string>();
 
-  const rows: StudentUploadRow[] = [];
-  let studentCounter = 1;
+  const validRows: StudentUploadRow[] = [];
+  const invalidRows: { rowNumber: number; raw: Record<string, string>; errors: string[] }[] = [];
 
-  programmes.forEach((prog) => {
-    for (let i = 1; i <= prog.count; i++) {
-      const padNum = String(i).padStart(3, '0');
-      const rollNo = `${prog.prefix}${prog.batch}${padNum}`;
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const cells = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
 
-      const fn = firstNames[(studentCounter + i * 7) % firstNames.length];
-      const ln = lastNames[(studentCounter + i * 13) % lastNames.length];
-      const name = `${fn} ${ln}`;
-      const email = `${fn.toLowerCase()}.${ln.toLowerCase()}.${studentCounter}@iiml.ac.in`;
-      const hostel = hostels[(studentCounter + i) % hostels.length];
+    const raw: Record<string, string> = {
+      roll_no: rollIndex >= 0 ? cells[rollIndex] : '',
+      name: nameIndex >= 0 ? cells[cells.length > nameIndex ? nameIndex : 1] : '',
+      email: emailIndex >= 0 ? cells[emailIndex] : '',
+      course: courseIndex >= 0 ? cells[courseIndex] : '',
+      batch: batchIndex >= 0 ? cells[batchIndex] : '',
+      hostel: hostelIndex >= 0 ? cells[hostelIndex] : '',
+    };
 
-      studentCounter++;
+    const validation = validateStudentRow(raw, existingRolls, existingEmails, prefixes);
 
-      const validated = validateStudentRow(
-        { roll_no: rollNo, name, email, hostel },
-        existingEmails,
-        existingRolls,
-        seenEmails,
-        seenRolls
-      );
-
-      rows.push(validated);
+    if (validation.isValid && validation.row) {
+      validRows.push(validation.row);
+      existingRolls.add(validation.row.roll_no);
+      existingEmails.add(validation.row.email);
+    } else {
+      invalidRows.push({
+        rowNumber: i + 1,
+        raw,
+        errors: validation.errors,
+      });
     }
-  });
+  }
 
-  // Inject 5 deliberate edge-case error rows to test the preview and validation UI
-  rows[15] = {
-    roll_no: 'UNKNOWN9999',
-    name: 'Invalid Prefix Student',
-    email: 'invalid.prefix@iiml.ac.in',
-    hostel: 'Hostel 1',
-    course: 'UNKNOWN',
-    batch: '',
-    isValid: false,
-    error: 'Unknown course prefix. No matching programme for "UNKN".',
+  return {
+    validRows,
+    invalidRows,
+    summary: {
+      total: lines.length - 1,
+      valid: validRows.length,
+      invalid: invalidRows.length,
+    },
   };
+}
 
-  rows[45] = {
-    roll_no: 'PGP42998',
-    name: 'Bad Domain Student',
-    email: 'bad.student@gmail.com',
-    hostel: 'Hostel 3',
-    course: 'PGP',
-    batch: '42',
-    isValid: false,
-    error: 'Invalid email domain. Only @iiml.ac.in is permitted.',
-  };
+export function generate2000TestStudents(existingUsers?: User[]): StudentUploadRow[] {
+  const students: StudentUploadRow[] = [];
+  const courses = ['PGP', 'ABM', 'IPM', 'IPMX'];
+  const firstNames = ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Sai', 'Reyansh', 'Ayaan', 'Krishna', 'Ishaan', 'Ananya', 'Diya', 'Gauri', 'Kavya', 'Aditi', 'Saanvi', 'Riya', 'Sara', 'Pari', 'Isha'];
+  const lastNames = ['Sharma', 'Verma', 'Patel', 'Singh', 'Gupta', 'Kumar', 'Reddy', 'Mehta', 'Iyer', 'Nair', 'Chawla', 'Bansal', 'Jain', 'Kothari', 'Deshmukh'];
 
-  rows[72] = {
-    roll_no: rows[10].roll_no,
-    name: 'Duplicate Roll Number Student',
-    email: 'duplicate.roll@iiml.ac.in',
-    hostel: 'Hostel 4',
-    course: 'PGP',
-    batch: '42',
-    isValid: false,
-    error: `Duplicate roll number "${rows[10].roll_no}" inside this file.`,
-  };
+  for (let i = 1; i <= 2000; i++) {
+    const course = courses[i % courses.length];
+    const batch = course === 'PGP' ? '41' : course === 'ABM' ? '20' : '04';
+    const seq = String(i).padStart(4, '0');
+    const roll_no = `${course}${batch}${seq}`;
+    const fn = firstNames[i % firstNames.length];
+    const ln = lastNames[i % lastNames.length];
+    const name = `${fn} ${ln} #${i}`;
+    const email = `${fn.toLowerCase()}.${ln.toLowerCase()}.${i}@iiml.ac.in`;
+    const hostelNum = (i % 17) + 1;
+    const hostel = `Hostel ${hostelNum}`;
 
-  return rows;
+    students.push({
+      roll_no,
+      name,
+      email,
+      course,
+      batch,
+      hostel,
+    });
+  }
+
+  return students;
 }

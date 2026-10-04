@@ -23,12 +23,12 @@ export function IssueRow({ issue, showVote = true }: Props) {
   } = useSunwai();
 
   const isVoted = userVotes.has(issue.id);
-  const ownerRole = getRoleById(issue.owner_role_id);
   const raiser = getUserById(issue.raised_by);
-  const currentUserRole = getUserRole(currentUser.id);
+  const ownerRole = getRoleById(issue.owner_role_id);
+  const currentUserRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isPresident = currentUserRole?.name === 'President';
-  const isOwner = currentUserRole?.id === issue.owner_role_id;
-  const isRaiser = issue.raised_by === currentUser.id;
+  const isOwner = currentUserRole ? currentUserRole.id === issue.owner_role_id : false;
+  const isRaiser = currentUser ? issue.raised_by === currentUser.id : false;
 
   const commentCount = comments.filter((c) => c.issue_id === issue.id).length;
 

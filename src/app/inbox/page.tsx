@@ -8,23 +8,40 @@ import { IssueRow } from '@/components/IssueRow';
 export default function MyInboxPage() {
   const { currentUser, getUserRole, issues, roles } = useSunwai();
 
-  const userRole = getUserRole(currentUser.id);
+  const userRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const [activeTab, setActiveTab] = useState<'needs_action' | 'waiting_on_student' | 'done'>('needs_action');
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
+        <p className="text-[14px] text-[#64748b]">
+          Sign in with your council account to access your assigned tickets and SLA updates.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in with IIML Google
+        </Link>
+      </div>
+    );
+  }
 
   // If user does not hold a council role
   if (!userRole) {
     return (
-      <div className="bg-white rounded-[12px] border border-[#dde2ea] p-10 max-w-[600px] mx-auto text-center space-y-4 my-8">
-        <h1 className="text-[20px] font-serif text-[#16213e]">Council inbox</h1>
-        <p className="text-[14px] text-[#5b6478]">
-          You are currently signed in as a student without an assigned council position. Inboxes are reserved for elected council representatives.
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Access restricted</h1>
+        <p className="text-[14px] text-[#64748b]">
+          You are currently signed in as a general student ({currentUser.course} {currentUser.batch}). Inboxes are reserved for elected council representatives, hostel reps, and section CRs.
         </p>
         <div>
           <Link
-            href="/signin"
-            className="inline-block bg-[#2f45c5] hover:bg-[#2537a0] text-white text-[14px] font-medium px-4 py-2 rounded-[8px] transition-colors"
+            href="/"
+            className="inline-block bg-gray-100 hover:bg-gray-200 text-[#0f172a] text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors"
           >
-            Switch to a council account
+            Back to all issues
           </Link>
         </div>
       </div>

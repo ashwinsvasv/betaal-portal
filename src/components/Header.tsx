@@ -3,26 +3,31 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, getUserRole } = useSunwai();
+  const { currentUser, getUserRole, logout } = useSunwai();
   const [headerSearch, setHeaderSearch] = useState('');
 
-  const userRole = getUserRole(currentUser.id);
+  const userRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isCouncil = Boolean(userRole);
   const isPresidentOrAdmin =
-    userRole?.name === 'President' || currentUser.email === 'techadmin@iiml.ac.in';
+    userRole?.name === 'President' || currentUser?.email === 'techadmin@iiml.ac.in';
 
   // Role or roll number display string
-  const rollOrBatch = currentUser.roll_no || `${currentUser.course}${currentUser.batch || '42'}`;
-  const roleDisplay = userRole ? userRole.name : `${currentUser.course} ${currentUser.batch || '42'}`;
+  const rollOrBatch = currentUser
+    ? currentUser.roll_no || `${currentUser.course || 'PGP'}${currentUser.batch || '42'}`
+    : '';
+  const roleDisplay = userRole
+    ? userRole.name
+    : currentUser
+    ? `${currentUser.course || 'PGP'} ${currentUser.batch || '42'}`
+    : '';
 
   // Avatar initials
-  const initials = currentUser.name
+  const initials = currentUser?.name
     ? currentUser.name
         .split(' ')
         .filter(Boolean)
@@ -30,7 +35,7 @@ export function Header() {
         .slice(0, 2)
         .join('')
         .toUpperCase()
-    : 'U';
+    : '';
 
   const navLinkClass = (active: boolean) =>
     `text-[13px] sm:text-[14px] font-medium transition-colors px-3 py-1.5 rounded-full ${
@@ -88,46 +93,57 @@ export function Header() {
           </form>
         </div>
 
-        {/* Right: Raise Button, Profile Card & Sign Out */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <Link
-            href="/raise"
-            className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-full transition-all shadow-xs flex items-center gap-1.5"
-          >
-            <span className="text-base leading-none font-bold">+</span>
-            <span>Raise issue</span>
-          </Link>
-
-          {/* User Profile Card (Etrigan style) */}
-          <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-gray-200">
-            <div
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs ring-1 ring-black/5 shrink-0"
-              title={`${currentUser.name} (${roleDisplay})`}
+        {/* Right: Authenticated Profile OR Unauthenticated Sign In Button */}
+        {currentUser ? (
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <Link
+              href="/raise"
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-full transition-all shadow-xs flex items-center gap-1.5"
             >
-              {initials}
-            </div>
-            <div className="hidden lg:flex flex-col text-left leading-tight">
-              <span className="text-[13px] font-bold text-gray-900 max-w-[130px] truncate">
-                {currentUser.name}
-              </span>
-              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-tight">
-                {rollOrBatch}
-              </span>
-            </div>
-          </div>
+              <span className="text-base leading-none font-bold">+</span>
+              <span>Raise issue</span>
+            </Link>
 
-          {/* Sign Out Button */}
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: '/signin' })}
-            title="Sign out"
-            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
+            {/* User Profile Card */}
+            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-gray-200">
+              <div
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs ring-1 ring-black/5 shrink-0"
+                title={`${currentUser.name} (${roleDisplay})`}
+              >
+                {initials}
+              </div>
+              <div className="hidden lg:flex flex-col text-left leading-tight">
+                <span className="text-[13px] font-bold text-gray-900 max-w-[130px] truncate">
+                  {currentUser.name}
+                </span>
+                <span className="text-[11px] font-medium text-gray-500 uppercase tracking-tight">
+                  {rollOrBatch}
+                </span>
+              </div>
+            </div>
+
+            {/* Sign Out Button */}
+            <button
+              type="button"
+              onClick={logout}
+              title="Sign out"
+              className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/signin"
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all shadow-xs"
+            >
+              Sign in with IIML Google
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Subnav Navigation Links Bar */}
@@ -138,9 +154,11 @@ export function Header() {
               All issues
             </Link>
 
-            <Link href="/my-issues" className={navLinkClass(pathname === '/my-issues')}>
-              My issues
-            </Link>
+            {currentUser && (
+              <Link href="/my-issues" className={navLinkClass(pathname === '/my-issues')}>
+                My issues
+              </Link>
+            )}
 
             {isCouncil && (
               <Link href="/inbox" className={navLinkClass(pathname === '/inbox')}>
@@ -157,14 +175,24 @@ export function Header() {
               </Link>
             )}
 
-            <Link href="/outbox" className={navLinkClass(pathname === '/outbox')}>
-              Email log
-            </Link>
+            {(isCouncil || isPresidentOrAdmin) && (
+              <Link href="/outbox" className={navLinkClass(pathname === '/outbox')}>
+                Email log
+              </Link>
+            )}
           </nav>
 
-          <div className="text-[11px] text-gray-400 font-medium hidden sm:block">
-            Signed in as <span className="text-gray-700 font-semibold">{roleDisplay}</span>
-          </div>
+          {currentUser ? (
+            <div className="text-[11px] text-gray-400 font-medium hidden sm:block">
+              Signed in as <span className="text-gray-700 font-semibold">{roleDisplay}</span>
+            </div>
+          ) : (
+            <div className="text-[11px] text-gray-400 font-medium hidden sm:block">
+              <Link href="/signin" className="hover:text-[#2563eb] underline">
+                Sign in to raise issues or view your inbox
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

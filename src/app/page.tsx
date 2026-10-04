@@ -35,7 +35,7 @@ function AllIssuesContent() {
     }
   }, [urlSearch]);
 
-  const currentUserRole = getUserRole(currentUser.id);
+  const currentUserRole = currentUser ? getUserRole(currentUser.id) : undefined;
   const isPresident = currentUserRole?.name === 'President';
 
   // Filter & Sort Issues
@@ -44,15 +44,15 @@ function AllIssuesContent() {
       .filter((issue) => {
         // Privacy rule: private issues are invisible to unauthorized users
         if (issue.visibility === 'private') {
-          const isOwner = issue.owner_role_id === currentUserRole?.id;
-          const isRaiser = issue.raised_by === currentUser.id;
+          const isOwner = currentUserRole ? issue.owner_role_id === currentUserRole.id : false;
+          const isRaiser = currentUser ? issue.raised_by === currentUser.id : false;
           if (!isOwner && !isPresident && !isRaiser) return false;
         }
 
         // Held for review rule: invisible until approved except to raiser, admin, president
         if (issue.held_for_review) {
-          const isRaiser = issue.raised_by === currentUser.id;
-          const isAdmin = currentUser.email === 'techadmin@iiml.ac.in';
+          const isRaiser = currentUser ? issue.raised_by === currentUser.id : false;
+          const isAdmin = currentUser?.email === 'techadmin@iiml.ac.in';
           if (!isRaiser && !isAdmin && !isPresident) return false;
         }
 

@@ -27,30 +27,47 @@ export default function RaiseIssuePage() {
 
   // Real-time Duplicate Detection
   const similarIssues = useMemo(() => {
-    if (dismissDuplicates) return [];
+    if (dismissDuplicates || !currentUser) return [];
     return findSimilarIssues({
       title,
       details,
       category,
       scope,
-      hostel: currentUser.hostel,
+      hostel: currentUser?.hostel || '',
       issues,
       minScore: 0.22,
     });
-  }, [title, details, category, scope, currentUser.hostel, issues, dismissDuplicates]);
+  }, [title, details, category, scope, currentUser, issues, dismissDuplicates]);
 
   // Routing suggestion for Step 2
   const routing = useMemo(() => {
     return determineSuggestedOwner(
       category,
       scope,
-      currentUser.hostel,
+      currentUser?.hostel || '',
       roles,
       false,
       false,
-      currentUser.id
+      currentUser?.id
     );
-  }, [category, scope, currentUser.hostel, roles, currentUser.id]);
+  }, [category, scope, currentUser, roles]);
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-10 max-w-[540px] mx-auto text-center space-y-4 my-8 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+        <h1 className="text-[22px] font-serif font-bold text-[#0f172a]">Please sign in</h1>
+        <p className="text-[14px] text-[#64748b]">
+          Sign in with your IIM Lucknow account to raise an issue, attach photos, and receive official SLA updates from your representative.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[14px] font-semibold px-5 py-2.5 rounded-full transition-colors shadow-xs"
+        >
+          Sign in with IIML Google
+        </Link>
+      </div>
+    );
+  }
 
   // Handle image upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

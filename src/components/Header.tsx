@@ -66,32 +66,19 @@ export function Header() {
     }
   };
 
-  const logoSrc = theme === 'dark' ? '/logo-dark-shield.png' : '/logo.png';
+  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo.png';
 
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-30 shadow-xs transition-colors">
       {/* Top Main Bar */}
       <div className="max-w-[1050px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-4">
-        {/* Left: Betaal 1.0 Devanagari-styled Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+        {/* Left: Betaal 1.0 Image Logo */}
+        <Link href="/" className="flex items-center group shrink-0" aria-label="Betaal 1.0 Home">
           <img
             src={logoSrc}
-            alt="Betaal Logo"
-            className="w-7 h-9 object-contain drop-shadow-xs transition-transform group-hover:scale-105"
+            alt="Betaal 1.0"
+            className="h-10 sm:h-11 w-auto max-w-[170px] sm:max-w-[200px] object-contain drop-shadow-xs transition-transform group-hover:scale-[1.02]"
           />
-          <div className="flex flex-col items-start leading-none">
-            <div className="flex items-baseline">
-              <span className="text-[23px] sm:text-[25px] font-bold tracking-tight text-slate-900 dark:text-white font-brand">
-                Betaal
-              </span>
-              <span className="text-[19px] sm:text-[21px] font-black text-rose-600 dark:text-rose-500 ml-1 font-brand">
-                1.0
-              </span>
-            </div>
-            <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-tight lowercase -mt-0.5 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-              connecting hell!
-            </span>
-          </div>
         </Link>
 
         {/* Center: Etrigan-Style Pill Search */}

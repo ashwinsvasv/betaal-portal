@@ -7,6 +7,7 @@ import { useSunwai } from '@/lib/store';
 import { IssueRow } from '@/components/IssueRow';
 import { IssueCategory } from '@/types';
 import { ALL_CATEGORIES, getCategoryMeta } from '@/lib/category-config';
+import { useTheme } from '@/components/ThemeProvider';
 import {
   Search,
   List,
@@ -29,6 +30,9 @@ import {
 function AllIssuesContent() {
   const { issues, currentUser, getUserRole } = useSunwai();
   const searchParams = useSearchParams();
+  const { theme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo.png';
 
   const urlSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(urlSearch);
@@ -51,22 +55,14 @@ function AllIssuesContent() {
   if (!currentUser) {
     return (
       <div className="space-y-8 py-4">
-        {/* Hero Gate Banner with Betaal Logo and Indian styled font */}
+        {/* Hero Gate Banner with Betaal Logo */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center space-y-6 shadow-sm max-w-2xl mx-auto">
           <div className="flex flex-col items-center justify-center space-y-3">
             <img
-              src="/logo.png"
-              alt="Betaal Logo"
-              className="w-20 h-24 sm:w-24 sm:h-28 object-contain drop-shadow-md"
+              src={logoSrc}
+              alt="Betaal 1.0"
+              className="h-20 sm:h-24 w-auto max-w-[280px] sm:max-w-[340px] object-contain drop-shadow-md"
             />
-            <div className="flex items-baseline justify-center">
-              <span className="text-[36px] sm:text-[42px] font-bold tracking-tight text-slate-900 font-brand">
-                Betaal
-              </span>
-              <span className="text-[28px] sm:text-[32px] font-black text-rose-600 ml-1.5 font-brand">
-                1.0
-              </span>
-            </div>
             <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
               IIM Lucknow Student Council Grievance Portal
             </div>
@@ -258,23 +254,14 @@ function AllIssuesContent() {
       {/* 1. Header & Quick Purpose Brief */}
       <div className="space-y-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <img
-              src="/logo.png"
-              alt="Betaal Logo"
-              className="w-11 h-14 object-contain drop-shadow-xs shrink-0 mt-0.5"
+              src={logoSrc}
+              alt="Betaal 1.0"
+              className="h-11 sm:h-12 w-auto max-w-[190px] sm:max-w-[220px] object-contain drop-shadow-xs shrink-0"
             />
-            <div className="space-y-1">
-              <div className="flex items-baseline">
-                <h1 className="text-[24px] sm:text-[26px] font-bold text-slate-900 font-brand">
-                  Betaal
-                </h1>
-                <span className="text-[20px] sm:text-[22px] font-black text-rose-600 ml-1.5 font-brand">
-                  1.0
-                </span>
-                <span className="text-[12px] text-slate-400 font-medium ml-2">· IIM Lucknow</span>
-              </div>
-              <p className="text-[13px] sm:text-[14px] text-slate-600 leading-relaxed font-medium">
+            <div className="space-y-0.5">
+              <p className="text-[13px] sm:text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                 Betaal keeps the Student Council accountable. Raise an issue, track the 48h reply deadline, and watch every step in the open until it&apos;s done.
               </p>
             </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { useSunwai } from '@/lib/store';
 import { ALL_HOSTELS, ALL_SECTIONS } from '@/lib/constants';
+import { useTheme } from '@/components/ThemeProvider';
 
 type DemoCategory = 'council' | 'hostel_reps' | 'class_reps' | 'students';
 
@@ -15,6 +16,9 @@ export default function SignInPage() {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const { status } = useSession();
   const { users, currentUser, setCurrentUser, updateUser } = useSunwai();
+  const { theme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo.png';
 
   const [googleReady, setGoogleReady] = useState<boolean | null>(null);
   const [hostel, setHostel] = useState('');
@@ -238,20 +242,12 @@ export default function SignInPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-10 max-w-[960px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-8 lg:gap-12 items-start shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
         {/* Left: Headline, Logo & Purpose Brief */}
         <div className="space-y-5 lg:sticky lg:top-24">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <img
-              src="/logo.png"
-              alt="Betaal Logo"
-              className="w-12 h-16 object-contain drop-shadow-xs"
+              src={logoSrc}
+              alt="Betaal 1.0"
+              className="h-14 sm:h-16 w-auto max-w-[220px] object-contain drop-shadow-xs"
             />
-            <div className="flex items-baseline">
-              <span className="text-[32px] font-bold text-slate-900 font-brand">
-                Betaal
-              </span>
-              <span className="text-[24px] font-black text-rose-600 ml-1.5 font-brand">
-                1.0
-              </span>
-            </div>
           </div>
 
           <h1 className="text-[26px] sm:text-[28px] font-bold text-slate-900 leading-tight">

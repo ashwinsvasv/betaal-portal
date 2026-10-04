@@ -2,15 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/deadline-checker",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/daily-digest",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/backup-check",
-      "schedule": "0 0 * * *"
     }
   ]
 }

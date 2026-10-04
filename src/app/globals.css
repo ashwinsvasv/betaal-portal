@@ -14,12 +14,94 @@
   --color-accent-soft: #eaedfb;
 }
 
+.dark {
+  --color-page: #0b1120;
+  --color-panel: #111827;
+  --color-text: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-line: #1e293b;
+  --color-accent: #3b82f6;
+  --color-accent-soft: #1e3a8a;
+}
+
 body {
   font-family: var(--font-montserrat), 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #16213e;
   background-color: #f4f6f9;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  color: #f8fafc;
+  background-color: #0b1120;
+}
+
+/* Global Dark Mode component overrides for rapid consistency */
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-slate-50, 
+.dark .bg-slate-50\/70, 
+.dark .bg-slate-50\/80 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-100, 
+.dark .bg-slate-100\/80, 
+.dark .bg-slate-100\/90 {
+  background-color: #1f2937 !important;
+}
+
+.dark .border-slate-200, 
+.dark .border-slate-200\/60, 
+.dark .border-slate-200\/70, 
+.dark .border-slate-200\/80,
+.dark .border-gray-200, 
+.dark .border-gray-200\/80,
+.dark .border-gray-100,
+.dark .border-slate-100 {
+  border-color: #1f2937 !important;
+}
+
+.dark .text-slate-900, 
+.dark .text-gray-900,
+.dark .text-\[\#0f172a\],
+.dark .text-\[\#16213e\] {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark input, 
+.dark textarea, 
+.dark select {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark input::placeholder, 
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark .hover\:bg-slate-50\/70:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover {
+  background-color: #1e293b !important;
 }
 
 h1, h2, h3, h4, h5, h6, .font-serif, .font-sans {
@@ -29,12 +111,6 @@ h1, h2, h3, h4, h5, h6, .font-serif, .font-sans {
 .font-brand, .font-indian {
   font-family: 'Rozha One', 'Yatra One', serif;
   letter-spacing: 0.03em;
-}
-
-/* Remove default focus ring outlines and replace with clean calm accent border */
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  border-color: #2563eb !important;
 }
 
 /* Custom subtle scrollbar */
@@ -47,11 +123,23 @@ input:focus, textarea:focus, select:focus {
   background: #f4f6f9;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #dde2ea;
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
